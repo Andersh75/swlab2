@@ -8,6 +8,8 @@ mongoose.connect('mongodb://andersh75:-Gre75mger-@ds161336.mlab.com:61336/mongot
 const app = express();
 var router = express.Router();
 
+var Bear = require('./app/models/bear');
+
 
 //svar db
 
@@ -97,6 +99,81 @@ app.route('/login')
     .post(function(req, res) {
         console.log('processing');
         res.send('processing the login form!');
+    });
+
+
+router.route('/bears')
+
+// create a bear (accessed at POST http://localhost:8080/api/bears)
+.post(function(req, res) {
+
+    var bear = new Bear();      // create a new instance of the Bear model
+    bear.name = req.body.name;  // set the bears name (comes from the request)
+
+    // save the bear and check for errors
+    bear.save(function(err) {
+        if (err)
+            res.send(err);
+
+        res.json({ message: req.body });
+    });
+    
+
+})
+
+
+.get(function(req, res) {
+    Bear.find(function(err, bears) {
+        if (err)
+            res.send(err);
+
+        res.json(bears);
+    });
+});
+
+
+router.route('/bears/:bear_id')
+
+    // get the bear with that id (accessed at GET http://localhost:8080/api/bears/:bear_id)
+    .get(function(req, res) {
+        Bear.findById(req.params.bear_id, function(err, bear) {
+            if (err)
+                res.send(err);
+            res.json(bear);
+        });
+    })
+
+    .put(function(req, res) {
+
+        // use our bear model to find the bear we want
+        Bear.findById(req.params.bear_id, function(err, bear) {
+
+            if (err)
+                res.send(err);
+
+            bear.name = req.body.name;  // update the bears info
+
+            // save the bear
+            bear.save(function(err) {
+                if (err)
+                    res.send(err);
+
+                res.json({ message: 'Bear updated!' });
+            });
+
+        });
+    })
+
+    // delete the bear with this id (accessed at DELETE http://localhost:8080/api/bears/:bear_id)
+    .delete(function(req, res) {
+        Bear.remove({
+            _id: req.params.bear_id
+        }, function(err, bear) {
+            if (err)
+                res.send(err);
+
+            res.json({ message: 'Successfully deleted' });
+        });
     });
 
 
