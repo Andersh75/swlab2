@@ -1,6 +1,7 @@
 const express = require('express');
 const bodyParser= require('body-parser')
 //const MongoClient = require('mongodb').MongoClient
+var path = require('path');
 
 var mongoose = require('mongoose');
 mongoose.connect('mongodb://andersh75:-Gre75mger-@ds161336.mlab.com:61336/mongotest');
@@ -21,7 +22,14 @@ var Bear = require('./app/models/bear');
 //   })
 // })
 
-app.use(express.static(__dirname + '/public'));
+//app.use(express.static(__dirname + '/public'));
+
+app.listen('4000');
+
+app.use(express.static(path.join(__dirname, 'html')));
+app.use(express.static(path.join(__dirname, 'css')));
+app.use(express.static(path.join(__dirname, 'javascript')));
+app.use(express.static(path.join(__dirname, 'public')));
 
 app.use(bodyParser.urlencoded({extended: true}));
 app.use(bodyParser.json());
@@ -179,4 +187,4 @@ router.route('/bears/:bear_id')
 
 app.use('/api', router);
 
-app.listen('3000');
+
