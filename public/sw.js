@@ -14,9 +14,11 @@ self.addEventListener('fetch', function (event) {
         { _id: '33333333', name: "Stina", __v: 0 }
     ];
 
+    var singleFallbackResponse = { _id: '5555555', name: "Kurt", __v: 0 };
 
-    if (event.request.url.includes("api/bears")) {
-        console.log('Service Worker fetching API: ', event.request.url);
+
+    if (event.request.url.endsWith("api/bears")) {
+        console.log('Service Worker fetching API: ', event.request);
         event.respondWith(
             fetch(event.request)
             .then((res) => { return res.json()})
@@ -28,6 +30,61 @@ self.addEventListener('fetch', function (event) {
                     return new Response(JSON.stringify(resp), {
                         headers: { 'Content-Type': 'application/json' }
                     });
+                }
+            )
+            .catch(function() {
+                //console.log(resp);
+
+                return getData('bears').then(function(obj) {
+
+                    return new Response(JSON.stringify(obj), {
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                }
+            );
+            })
+        
+    );
+
+
+        // event.respondWith(
+        //     addFetchToStore("bears", fallbackResponse)
+        //     .then(function(resps) {
+        //         //console.log('response array!!: ', resps);
+        //         return new Response(JSON.stringify(resps), {
+        //             headers: { 'Content-Type': 'application/json' }
+        //         });
+        //     })
+        // );
+
+
+
+        // event.respondWith(
+        //     new Response(JSON.stringify(fallbackResponse), {
+        //         headers: { 'Content-Type': 'application/json' }
+        //     })
+        // );
+          
+
+        
+        
+
+      } else if (event.request.url.includes("api/bears")) {
+          var requestURL = new URL(event.request.url);
+          var ourPath = requestURL.pathname;
+          var ourID = ourPath.replace("/api/bears/", '');
+
+        console.log('Service Worker fetching API for one bear: ', ourID);
+        event.respondWith(
+            getData('bears', ourID).then(function(obj) {
+                    if (obj) {
+                        return new Response(JSON.stringify(obj), {
+                            headers: { 'Content-Type': 'application/json' }
+                        });
+                    } else {
+                        return fetch(event.request);
+                    }
+                    
                 }
             )
         );
@@ -108,7 +165,12 @@ self.addEventListener('fetch', function (event) {
 var addFetchToStore = function(storeName, items) {
     return new Promise(function(resolve, reject) {
         openDatabase().then(function(db) {
-            openObjectStore(db, storeName, "readwrite").then(function(objStore) {
+            openObjectStore(db, storeName, "readwrite")
+            .then(function(objStore) {
+                return clearObjectStore(objStore);
+            })
+            .then(function(objStore) {
+                //clearObjectStore();
                 console.log('OBJECTSTORE: ', objStore);
                 Promise.all(items.map(function(item) {
                     return addObject(objStore, item);
@@ -140,6 +202,13 @@ var addObject = function(objectStore, object) {
     });
 };
 
+var clearObjectStore = function(objectStore) {
+    return new Promise(function(resolve, reject) {
+        var request = objectStore.clear();
+        request.onsuccess = resolve(objectStore);
+    });
+};
+
 // // fetch('http://localhost:4000/api/bears').then((res) => { return res.json()}).then(function(data) {
 // //     data.forEach(function(dataItem) {
 // //         openDatabase().then(function(db) {
@@ -153,6 +222,42 @@ var addObject = function(objectStore, object) {
 // //     });
     
 // // });
+
+
+var getData = function(storeName, id) {
+    return new Promise(function(resolve, reject) {
+        openDatabase().then(function(db) {
+            var objectStore = openObjectStore(db, storeName);
+            var notesAr = [];
+            objectStore.then(function(objStore) {
+                if (!id) {
+                    console.log('no id');
+                    objStore.openCursor().onsuccess = function(event) {
+                        var cursor = event.target.result;
+                        if (cursor) {
+                            notesAr.push(cursor.value);
+                            cursor.continue();
+                        } else {
+                            resolve(notesAr);
+                        } 
+
+                    }
+
+                }  else {
+                    var request = objStore.get(id);
+                    request.onsuccess = function(event) {
+                        console.log('What I found', event.target.result);
+                        resolve(event.target.result);
+                    };
+                   
+
+                    
+                }
+            }); 
+        });
+    });
+};
+
 
 
 // var getData = function() {
@@ -190,8 +295,6 @@ var addObject = function(objectStore, object) {
 //     });
 //     });
 // };
-
-
 
 
 

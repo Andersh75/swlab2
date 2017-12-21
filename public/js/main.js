@@ -17,7 +17,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     document.getElementById("second").appendChild(elem);
 
-    fetch('http://localhost:4000/api/bears')
+    fetch('http://localhost:4000/api/bears/5a3a6d9d88d81d72a6600f42')
     .then((res) => { return res.json()})
     .then((data) => { /*
         let result = '<h2> Users Info </h2>';
@@ -31,6 +31,40 @@ document.addEventListener('DOMContentLoaded', function() {
              `;*/
         document.getElementById('third').innerHTML = JSON.stringify(data);
         });
+
+
+        fetch('http://localhost:4000/api/bears/5a3a6e0b88d81d72a6600f43')
+    .then((res) => { return res.json()})
+    .then((data) => { /*
+        let result = '<h2> Users Info </h2>';
+        data.forEach((user) => {
+            result +=
+             `<h4> User ID: ${user.id} </h4>
+             <ul>
+               <li> User tittle : ${user.name}</li>
+               <li> User body : ${user.body} </li>
+            </ul>
+             `;*/
+        document.getElementById('fourth').innerHTML = JSON.stringify(data);
+        });
+
+        fetch('http://localhost:4000/api/bears')
+        .then((res) => { return res.json()})
+        .then((data) => { /*
+            let result = '<h2> Users Info </h2>';
+            data.forEach((user) => {
+                result +=
+                 `<h4> User ID: ${user.id} </h4>
+                 <ul>
+                   <li> User tittle : ${user.name}</li>
+                   <li> User body : ${user.body} </li>
+                </ul>
+                 `;*/
+            document.getElementById('fifth').innerHTML = JSON.stringify(data);
+            });
+
+
+       
 
     // fetch('http://localhost:4000/api/bears').then(function(myres) {
     //     console.log('myres: ', myres);
