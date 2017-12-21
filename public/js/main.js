@@ -19,7 +19,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     fetch('http://localhost:4000/api/bears')
     .then((res) => { return res.json()})
-    .then((data) => { 
+    .then((data) => { /*
         let result = '<h2> Users Info </h2>';
         data.forEach((user) => {
             result +=
@@ -28,12 +28,18 @@ document.addEventListener('DOMContentLoaded', function() {
                <li> User tittle : ${user.name}</li>
                <li> User body : ${user.body} </li>
             </ul>
-             `;
-        document.getElementById('third').innerHTML = result;
+             `;*/
+        document.getElementById('third').innerHTML = JSON.stringify(data);
         });
-    });
+
+    // fetch('http://localhost:4000/api/bears').then(function(myres) {
+    //     console.log('myres: ', myres);
+    //     //document.getElementById('third').innerHTML = myres[0].name;
+    // });
 
     
+    
+
 
 
 }, false);
