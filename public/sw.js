@@ -51,23 +51,45 @@ self.addEventListener('fetch', function (event) {
 
 
 
+var indexedDBSettings = {
+        dbInIndexedDB: {
+            name: "test",
+            version: 3
+        },
+        storesInIndexedDB: [
+            {
+                name: "bears",
+                keyPath: "_id"
+            },
+            {
+                name: "inflation",
+                keyPath: "_id"
+            },
+            {
+                name: "interest",
+                keyPath: "_id"
+            }
+        ]
+};
 
 
 
 
 var openDatabase = function () {
     return new Promise(function (resolve, reject) {
-        var openRequest = indexedDB.open('test', 3);
+        var openRequest = indexedDB.open(indexedDBSettings.dbInIndexedDB.name, indexedDBSettings.dbInIndexedDB.version);
 
         openRequest.onupgradeneeded = function (e) {
             var thisDB = e.target.result;
             console.log("running onupgradeneeded");
 
-            if (!thisDB.objectStoreNames.contains("bears")) {
-                var notesOS = thisDB.createObjectStore("bears", {
-                    keyPath: "_id"
-                });
-            }
+            indexedDBSettings.storesInIndexedDB.forEach(function(store) {
+                if (!thisDB.objectStoreNames.contains(store.name)) {
+                    thisDB.createObjectStore(store.name, {
+                        keyPath: store.keyPath
+                    });
+                }
+            });
         };
 
         openRequest.onsuccess = function (e) {
