@@ -23,6 +23,8 @@ app.use(bodyParser.json());
 
 
 // route middleware that will happen on every request
+routerAPI.use(bodyParser.urlencoded({extended: true}));
+routerAPI.use(bodyParser.json());
 routerAPI.use(function(req, res, next) {
     console.log(req.method, req.url);
     next(); 

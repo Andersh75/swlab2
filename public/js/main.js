@@ -17,7 +17,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     document.getElementById("second").appendChild(elem);
 
-    fetch('http://localhost:4000/api/bears/5a3a6d9d88d81d72a6600f42')
+    fetch('http://localhost:4000/api/bears/5a3c4134b5f523b1617c60ed')
     .then((res) => { return res.json()})
     .then((data) => { /*
         let result = '<h2> Users Info </h2>';
@@ -33,7 +33,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
 
 
-        fetch('http://localhost:4000/api/bears/5a3a6e0b88d81d72a6600f43')
+        fetch('http://localhost:4000/api/bears/5a3c38300245d4af96ec7173')
     .then((res) => { return res.json()})
     .then((data) => { /*
         let result = '<h2> Users Info </h2>';
@@ -62,6 +62,25 @@ document.addEventListener('DOMContentLoaded', function() {
                  `;*/
             document.getElementById('fifth').innerHTML = JSON.stringify(data);
             });
+
+
+
+            var request = new Request('http://localhost:4000/api/bears/5a3a6e0b88d81d72a6600f43', {
+                method: 'DELETE', 
+                mode: 'cors', 
+                redirect: 'follow',
+                headers: new Headers({
+                    'Content-Type': 'text/json'
+                })
+            });
+            
+            // Now use it!
+            setTimeout(function() {
+                fetch(request);
+            }, 3000);
+
+
+            
 
 
        
