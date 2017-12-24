@@ -29,8 +29,8 @@ document.addEventListener('DOMContentLoaded', function() {
             author: document.getElementById('bearinput').value
         };
 
-          fetch("/api/blog/2", {
-            method: 'PUT',
+          fetch("/api/blog", {
+            method: 'POST',
             body: JSON.stringify(payload),
             headers: {
               'Content-Type': 'application/json',
@@ -55,67 +55,48 @@ document.addEventListener('DOMContentLoaded', function() {
 
     document.getElementById("second").appendChild(elem);
 
-    fetch('http://localhost:4000/api/bear/5a3c4134b5f523b1617c60ed')
-    .then((res) => { return res.json()})
-    .then((data) => { /*
-        let result = '<h2> Users Info </h2>';
-        data.forEach((user) => {
-            result +=
-             `<h4> User ID: ${user.id} </h4>
-             <ul>
-               <li> User tittle : ${user.name}</li>
-               <li> User body : ${user.body} </li>
-            </ul>
-             `;*/
-        document.getElementById('third').innerHTML = JSON.stringify(data);
-        });
+    // fetch('http://localhost:4000/api/bea/5a3c4134b5f523b1617c60ed')
+    // .then((res) => { return res.json()})
+    // .then((data) => { 
+    //     document.getElementById('third').innerHTML = JSON.stringify(data);
+    //     }).catch(function (e) {
+    //         document.getElementById('third').innerHTML = e;
+    //     });
 
 
         fetch('http://localhost:4000/api/bear/5a3c38300245d4af96ec7173')
-    .then((res) => { return res.json()})
-    .then((data) => { /*
-        let result = '<h2> Users Info </h2>';
-        data.forEach((user) => {
-            result +=
-             `<h4> User ID: ${user.id} </h4>
-             <ul>
-               <li> User tittle : ${user.name}</li>
-               <li> User body : ${user.body} </li>
-            </ul>
-             `;*/
+    .then((res) => {
+        console.log('res');
+         return res.json()})
+    .then((data) => {
         document.getElementById('fourth').innerHTML = JSON.stringify(data);
+        }).catch(function (e) {
+            document.getElementById('fourth').innerHTML = e;
         });
 
         fetch('http://localhost:4000/api/bear')
         .then((res) => { return res.json()})
-        .then((data) => { /*
-            let result = '<h2> Users Info </h2>';
-            data.forEach((user) => {
-                result +=
-                 `<h4> User ID: ${user.id} </h4>
-                 <ul>
-                   <li> User tittle : ${user.name}</li>
-                   <li> User body : ${user.body} </li>
-                </ul>
-                 `;*/
+        .then((data) => { 
             document.getElementById('fifth').innerHTML = JSON.stringify(data);
+            }).catch(function (e) {
+                document.getElementById('fifth').innerHTML = e;
             });
 
 
 
-            var request = new Request('http://localhost:4000/api/bear/5a3a6e0b88d81d72a6600f43', {
-                method: 'DELETE', 
-                mode: 'cors', 
-                redirect: 'follow',
-                headers: new Headers({
-                    'Content-Type': 'text/json'
-                })
-            });
+            // var request = new Request('http://localhost:4000/api/bear/5a3a6e0b88d81d72a6600f43', {
+            //     method: 'DELETE', 
+            //     mode: 'cors', 
+            //     redirect: 'follow',
+            //     headers: new Headers({
+            //         'Content-Type': 'text/json'
+            //     })
+            // });
             
-            // Now use it!
-            setTimeout(function() {
-                fetch(request);
-            }, 3000);
+            // // Now use it!
+            // setTimeout(function() {
+            //     fetch(request);
+            // }, 3000);
 
 
             

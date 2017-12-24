@@ -10,7 +10,6 @@ self.addEventListener('activate', function (event) {
 });
 
 
-
 self.addEventListener('fetch', function (event) {
     let requestURL = new URL(event.request.url);
     let requestURLArray = requestURL.pathname.split('/');
@@ -20,68 +19,43 @@ self.addEventListener('fetch', function (event) {
     if (requestURLArray[1] === 'api' && requestURLArray.length === 3) {
         //console.log('Service Worker fetching API: ', event.request);
         let storeName = requestURLArray[2];
+        let fetchPath = '/' + requestURLArray[1] + '/' + requestURLArray[2];
 
         switch(requestMethod) {
             case 'GET':
                 console.log('Get all...');
-                getAllRecordsNetworkFirst(event, storeName);
+                //getAllRecordsNetwork(event, fetchPath);
+                //getAllRecordsLocal(event, storeName);
+                //getAllRecordsNetworkFirstAndReplace(event, storeName, fetchPath);
+                getAllRecordsNetworkFirst(event, storeName, fetchPath);
+                //getAllRecordsLocalFirst(event, storeName, fetchPath);
+
                 break;
-            case 'POST':
-            event.respondWith(
-                postOneRecordLocal(event, storeName).then(function(recordId) {
-                    return getOneRecordFromStore(storeName, recordId);
-                }).then(function(record) {
-                    console.log('Last record: ', record);
-                    return fetch("/api/blog", {
-                        method: 'POST',
-                        body: JSON.stringify(record),
-                        headers: {
-                          'Content-Type': 'application/json',
-                          'Accept': 'application/json'
-                        }
-                    });
-                }).then(function(resp) {
-                    console.log('RESP: ', resp);
-                    return new Response(JSON.stringify({status: "OK"}), {
-                                 headers: { 'Content-Type': 'application/json' }
-                    });
-                })
-            );
-                break;
+            // case 'POST':
+            //     postOneRecordLocalThenNetwork(event, storeName, requestMethod, fetchPath);
+            //     break;
         }
       } else if (requestURLArray[1] === 'api' && requestURLArray.length === 4) {
         let storeName = requestURLArray[2];
         let recordId = requestURLArray[3];
+        let fetchPath = '/' + requestURLArray[1] + '/' + requestURLArray[2] + '/' + requestURLArray[3];
         //console.log('Service Worker fetching API for one bear: ', recordId);
         switch(requestMethod) {
-            case 'DELETE':
-                deleteOneRecordLocalFirst(event, storeName, recordId);
-                break;
+            // case 'DELETE':
+            //     deleteOneRecordLocalFirst(event, storeName, recordId);
+            //     break;
             case 'GET':
                 console.log('Get one...');
-                getOneRecordNetworkFirst(event, storeName, recordId);
+                //getOneRecordNetwork(event);
+                //getOneRecordLocal(event, storeName, recordId);
+                //getOneRecordNetworkFirst(event, storeName, recordId);
+                getOneRecordLocalFirst(event, storeName, recordId);
+
+
                 break;
-            case 'PUT':
-                event.respondWith(
-                putOneRecordLocal(event, storeName, recordId)
-                .then(function(record) {
-                    console.log('Last record: ', record);
-                    return fetch("/api/blog/" + recordId, {
-                        method: 'PUT',
-                        body: JSON.stringify(record),
-                        headers: {
-                          'Content-Type': 'application/json',
-                          'Accept': 'application/json'
-                        }
-                    });
-                }).then(function(resp) {
-                    console.log('RESP: ', resp);
-                    return new Response(JSON.stringify({status: "OK"}), {
-                                 headers: { 'Content-Type': 'application/json' }
-                    });
-                })
-            );
-                break;
+            // case 'PUT':
+                
+            //     break;
         }
       } else {
         //console.log('Service Worker fetching: ', event.request.url);
@@ -104,6 +78,27 @@ self.addEventListener('fetch', function (event) {
       }
   });
 
+
+
+var fetchBody = function(requestMethod, record, type) {
+    return {
+        method: requestMethod,
+        body: JSON.stringify(record),
+        headers: {
+          'Content-Type': 'application/' + type,
+          'Accept': 'application/' + type
+        }
+    };
+};
+
+
+var responseOK = function() {
+    return new Promise(function(resolve, reject) {
+        resolve(new Response(JSON.stringify({status: "OK"}), {
+            headers: { 'Content-Type': 'application/json' }
+        }));
+    });
+};
 
 
 
@@ -221,26 +216,166 @@ var openRecordStore = function(db, storeName, transactionmode) {
     });
 };
 
+
+
+
+
+/**
+ * Resolves with ..., using store object and record ID.
+ * @param {*} recordStore Store object
+ * @param {*} recordId Record ID
+ */
+var deleteOneRecord = function(recordStore, recordId) {
+    return new Promise(function(resolve, reject) {
+        let deleteRequest = recordStore.delete(recordId);
+        deleteRequest.onsuccess =  function(event) {
+            let recordId = event.target.result;
+            console.log('deleteRecord RECORDID: ', recordId);
+            resolve(recordId);
+        };
+    });
+};
+
 /**
  * Resolves with one record object from store, using store object.
  * @param {*} recordStore Store object
  * @param {*} recordId Record ID
  */
-var getRecord = function(recordStore, recordId) {
+var getOneRecord = function(recordStore, recordId) {
     return new Promise(function(resolve, reject) {
         let getRequest = recordStore.get(recordId);
         getRequest.onsuccess = function(event) {
             let record = event.target.result;
+            console.log('getRecord RECORD: ', getRequest);
             resolve(record);
+        };
+    });
+};
+
+/**
+ * Resolves with recordId using store object and record object.
+ * @param {*} recordStore Store object
+ * @param {*} record Record object
+ */
+var postOneRecord = function(recordStore, record) {
+    return new Promise(function(resolve, reject) {
+        console.log('WHAT???: ', record);
+        let postRequest = recordStore.add(record);
+        console.log('Exists???: ', record);
+        postRequest.onsuccess = function(event) {
+            let recordId = event.target.result;
+            console.log('postRecord RECORDID: ', recordId);
+            resolve(recordId);
         };
     });
 };
 
 
 /**
- * Resolves with one record object from store, using store name.
- * @param {*} storeName Store name
- * @param {*} recordId Record ID
+ * Resolves with recordId using store object and record object.
+ * @param {*} recordStore Store object
+ * @param {*} record Record object
+ */
+var putOneRecord = function(recordStore, record, recordId) {
+    return new Promise(function(resolve, reject) {
+        console.log('WHAT???: ', record);
+        record.id = Number(recordId);
+        let putRequest = recordStore.put(record);
+        console.log('Exists???: ', record);
+        putRequest.onsuccess = function(event) {
+            let recordId = event.target.result;
+            console.log('putRecord RECORDID: ', recordId);
+            resolve(recordId);
+        };
+    });
+};
+
+
+
+/**
+ * Resolves with ..., using store object and record objects.
+ * @param {*} recordStore Store object
+ * @param {*} records Record objects
+ */
+var postRecords = function(recordStore, records) {
+    console.log('record to add: ', records);
+    return new Promise(function(resolve, reject) {
+        Promise.all(records.map(function(record) {
+            return postOneRecord(recordStore, record);
+        })).then(function(recordIds) {
+            console.log('postRecords RECORDIDS: ', recordIds);
+            resolve(recordIds);
+        });
+    });
+};
+
+
+
+/**
+ * Resolves with empty store object, using store object
+ * @param {*} recordStore Store object
+ */
+var deleteAllRecords = function(recordStore) {
+    return new Promise(function(resolve, reject) {
+        let clearRequest = recordStore.clear();
+        clearRequest.onsuccess = function(event) {
+            console.log('deleteAllRecords store: ', recordStore);
+            resolve(recordStore);
+        };
+    });
+};
+
+/**
+ * Resolves with all record objects from store, using store object.
+ * @param {*} recordStore Store object
+ */
+var getAllRecords = function(recordStore) {
+    return new Promise(function(resolve, reject) {
+        var records = [];
+        recordStore.openCursor().onsuccess = function(event) {
+            
+            var cursor = event.target.result;
+            if (cursor) {
+                //console.log(cursor.value);
+                //console.log(records);
+                records.push(cursor.value);
+                cursor.continue();
+            } else {
+                //console.log('in getallrecords: ', records);
+                resolve(records);
+            } 
+        };
+    });
+};
+
+
+
+
+/**
+ * Resolves with store object, using store name and record ID
+ * @param {*} storeName 
+ * @param {*} recordId 
+ */
+var deleteOneRecordFromStore = function(storeName, recordId) {
+    return new Promise(function(resolve, reject) {
+        openDatabase()
+        .then(function(db) {
+            //console.log('MYDB: ', db);
+            return openRecordStore(db, storeName, "readwrite");
+        })
+        .then(function(recordStore) {
+            return deleteOneRecord(recordStore, recordId);
+        }).then(function(recordId) {
+            console.log('deleteOneRecordFromStore RECORDID: ', recordId);
+            resolve(recordId);
+        }); 
+    });
+};
+
+/**
+ * Resolves with store object, using store name and record ID
+ * @param {*} storeName 
+ * @param {*} recordId 
  */
 var getOneRecordFromStore = function(storeName, recordId) {
     return new Promise(function(resolve, reject) {
@@ -250,13 +385,125 @@ var getOneRecordFromStore = function(storeName, recordId) {
             return openRecordStore(db, storeName, "readwrite");
         })
         .then(function(recordStore) {
-            return getRecord(recordStore, recordId);
-        })
-        .then(function(record) {
+            return getOneRecord(recordStore, recordId);
+        }).then(function(record) {
+            console.log('getOneRecordFromStore RECORD: ', record);
             resolve(record);
-        });
+        }); 
     });
 };
+
+
+
+/**
+ * Resolves with store object, using store name and record object
+ * @param {*} storeName 
+ * @param {*} record 
+ */
+var postOneRecordToStore = function(storeName, record) {
+    return new Promise(function(resolve, reject) {
+        openDatabase()
+        .then(function(db) {
+            //console.log('MYDB: ', db);
+            return openRecordStore(db, storeName, "readwrite");
+        })
+        .then(function(recordStore) {
+            return postOneRecord(recordStore, record);
+        }).then(function(recordId) {
+            console.log('postOneRecordToStore RECORDID: ', recordId);
+            resolve(recordId);
+        }); 
+    });
+};
+
+
+/**
+ * Resolves with store object, using store name and record object
+ * @param {*} storeName 
+ * @param {*} record 
+ */
+var putOneRecordToStore = function(storeName, record, recordId) {
+    return new Promise(function(resolve, reject) {
+        openDatabase()
+        .then(function(db) {
+            //console.log('MYDB: ', db);
+            return openRecordStore(db, storeName, "readwrite");
+        })
+        .then(function(recordStore) {
+            return putOneRecord(recordStore, record, recordId);
+        }).then(function(recordId) {
+            console.log('putOneRecordToStore RECORDID: ', recordId);
+            resolve(recordId);
+        }); 
+    });
+};
+
+var deleteOneRecordFromRemoteDB = function(record, fetchPath, requestMethod) {
+    return fetch(fetchPath, fetchBody(requestMethod, record, 'json'));
+};
+
+
+var postOneRecordToRemoteDB = function(record, fetchPath, requestMethod) {
+    return fetch(fetchPath, fetchBody(requestMethod, record, 'json'));
+};
+
+var putOneRecordFromRemoteDB = function(record, fetchPath, requestMethod) {
+    return fetch(fetchPath, fetchBody(requestMethod, record, 'json'));
+};
+var getOneRecordFromRemoteDB = function(event) {
+    return fetch(event.request);
+};
+
+
+
+/**
+ * Resolves with empty store object, using store name
+ * @param {*} storeName Store name
+ */
+var deleteAllRecordsFromStore = function(storeName) {
+    return new Promise(function(resolve, reject) {
+        openDatabase()
+        .then(function(db) {
+            //console.log('MYDB: ', db);
+            return openRecordStore(db, storeName, "readwrite");
+        })
+        .then(function(recordStore) {
+            //console.log('HERE');
+            return deleteAllRecords(recordStore);
+        }).then(function(recordStore) {
+            resolve(recordStore);
+        }); 
+    });
+};
+
+
+
+/**
+ * Resolves with empty store object, using store name
+ * @param {*} storeName Store name
+ */
+var getAllRecordsFromStore = function(storeName) {
+    return new Promise(function(resolve, reject) {
+        openDatabase()
+        .then(function(db) {
+            console.log('MYDB: ', db);
+            return openRecordStore(db, storeName, "readwrite");
+        })
+        .then(function(recordStore) {
+            console.log('HERE', recordStore);
+            return getAllRecords(recordStore);
+        }).then(function(records) {
+            console.log(records);
+            resolve(records);
+        }); 
+    });
+};
+
+
+var getAllRecordsFromRemoteDB = function(fetchPath) {
+        return fetch(fetchPath);
+};
+
 
 
 /**
@@ -282,143 +529,40 @@ var getLastRecordFromStore = function(storeName) {
     });
 };
 
-/**
- * Resolves with all record objects from store, using store object.
- * @param {*} recordStore Store object
- */
-var getAllRecords = function(recordStore) {
-    return new Promise(function(resolve, reject) {
-        recordStore.openCursor().onsuccess = function(event) {
-            let records = [];
-            let cursor = event.target.result;
-            if (cursor) {
-                records.push(cursor.value);
-                cursor.continue();
-            } else {
-                resolve(records);
-            } 
-        };
-    });
-};
+
 
 
 /**
- * Resolves with all record objects from store, using store name.
+ * Resolves with one record object from store, using store name.
  * @param {*} storeName Store name
+ * @param {*} recordId Record ID
  */
-var getAllRecordsFromStore = function(storeName) {
-    return new Promise(function(resolve, reject) {
-        openDatabase()
-        .then(function(db) {
-            //console.log('MYDB: ', db);
-            return openRecordStore(db, storeName, "readwrite");
+var deleteOneRecordLocal = function(storeName, recordId) {
+    event.respondWith(
+        deleteOneRecordFromStore(storeName, recordId).then(function(recordId) {
+            return new Response(JSON.stringify({"recordId": recordId}), {
+                headers: { 'Content-Type': 'application/json' }
+            });
         })
-        .then(function(recordStore) {
-            return getAllRecords(recordStore);
+    );
+};
+
+
+/**
+ * Resolves with one record object from store, using store name.
+ * @param {*} storeName Store name
+ * @param {*} recordId Record ID
+ */
+var getOneRecordLocal = function(event, storeName, recordId) {
+    event.respondWith(
+        getOneRecordFromStore(storeName, recordId).then(function(record) {
+            return new Response(JSON.stringify(record), {
+                headers: { 'Content-Type': 'application/json' }
+            });
         })
-        .then(function(records) {
-            resolve(records);
-        });
-    });
+    );
 };
 
-/**
- * Resolves with ..., using store object and record object.
- * @param {*} recordStore Store object
- * @param {*} record Record object
- */
-var putRecord = function(recordStore, record, recordId) {
-    return new Promise(function(resolve, reject) {
-        console.log('WHAT???: ', record);
-        record.id = Number(recordId);
-        let putRequest = recordStore.put(record);
-        console.log('Exists???: ', record);
-        putRequest.onsuccess = resolve(record);
-    });
-};
-
-/**
- * Resolves with store object, using store name and record object
- * @param {*} storeName 
- * @param {*} record 
- */
-var putOneRecordToStore = function(storeName, record, recordId) {
-    return new Promise(function(resolve, reject) {
-        openDatabase()
-        .then(function(db) {
-            //console.log('MYDB: ', db);
-            return openRecordStore(db, storeName, "readwrite");
-        })
-        .then(function(recordStore) {
-            return putRecord(recordStore, record, recordId);
-        }).then(function(record) {
-            resolve(record);
-        }); 
-    });
-};
-
-/**
- * Put one record object to store name, using fetch event and store name. Local then network.
- * @param {*} event 
- * @param {*} storeName 
- */
-var putOneRecordLocal = function(event, storeName, recordId) {
-    return new Promise(function(resolve, reject) {
-    var localRequest = event.request.clone();
-        localRequest.json().then(function(record) {
-            return putOneRecordToStore(storeName, record, recordId);
-        }).then(function(record) {
-            resolve(record);                
-        });
-     });
-};
-
-var postOneRecordLocal = function(event, storeName) {
-    return new Promise(function(resolve, reject) {
-    var localRequest = event.request.clone();
-    
-        localRequest.json().then(function(record) {
-            return postOneRecordToStore(storeName, record);
-        }).then(function(recordId) {
-            console.log('recordID'. recordId)
-            resolve(recordId);                
-        });
-    });
-};
-
-/**
- * Resolves with ..., using store object and record object.
- * @param {*} recordStore Store object
- * @param {*} record Record object
- */
-var postRecord = function(recordStore, record) {
-    return new Promise(function(resolve, reject) {
-        console.log('WHAT???: ', record);
-        let postRequest = recordStore.add(record);
-        console.log('Exists???: ', record);
-        postRequest.onsuccess = function(event) {
-            resolve(event.target.result);
-        };
-    });
-};
-
-/**
- * Resolves with ..., using store object and record objects.
- * @param {*} recordStore Store object
- * @param {*} records Record objects
- */
-var postRecords = function(recordStore, records) {
-    console.log('record to add: ', records);
-    return new Promise(function(resolve, reject) {
-        Promise.all(records.map(function(record) {
-            
-            return postRecord(recordStore, record);
-        })).then(function(resps) {
-            console.log('promiseAll. WHAT IS THIS?: ', resps);
-            resolve(resps);
-        });
-    });
-};
 
 /**
  * Add one record object to store name, using fetch event and store name. Local then network.
@@ -427,131 +571,156 @@ var postRecords = function(recordStore, records) {
  */
 var postOneRecordLocal = function(event, storeName) {
     return new Promise(function(resolve, reject) {
-    var localRequest = event.request.clone();
-    
-        localRequest.json().then(function(record) {
+        event.request.json().then(function(record) {
             return postOneRecordToStore(storeName, record);
         }).then(function(recordId) {
-            console.log('recordID'. recordId)
-            resolve(recordId);                
+            return new Response(JSON.stringify({"recordId": recordId}), {
+                headers: { 'Content-Type': 'application/json' }
+            });
         });
     });
 };
 
+
 /**
- * Resolves with store object, using store name and record object
+ * Put one record object to store name, using fetch event and store name. Local then network.
+ * @param {*} event 
  * @param {*} storeName 
- * @param {*} record 
  */
-var postOneRecordToStore = function(storeName, record) {
+var putOneRecordLocal = function(event, storeName, recordId) {
     return new Promise(function(resolve, reject) {
-        openDatabase()
-        .then(function(db) {
-            //console.log('MYDB: ', db);
-            return openRecordStore(db, storeName, "readwrite");
-        })
-        .then(function(recordStore) {
-            return postRecord(recordStore, record);
+        event.request.json().then(function(record) {
+            return putOneRecordToStore(storeName, record, recordId);
         }).then(function(recordId) {
-            resolve(recordId);
-        }); 
-    });
+            return new Response(JSON.stringify({"recordId": recordId}), {
+                headers: { 'Content-Type': 'application/json' }
+            });
+        })
+     });
+};
+
+
+/**
+ * Resolves with one record object from store, using store name.
+ * @param {*} storeName Store name
+ * @param {*} recordId Record ID
+ */
+var getOneRecordNetwork = function(event) {
+    event.respondWith(
+        getOneRecordFromRemoteDB(event).catch(function() {
+            return new Response(JSON.stringify({"recordId": 'ONE'}), {
+                headers: { 'Content-Type': 'application/json' }
+            });
+        })
+    );
+};
+
+
+
+/**
+ * Resolves with one record object from store, using store name.
+ * @param {*} storeName Store name
+ * @param {*} recordId Record ID
+ */
+var deleteAllRecordsLocal = function(storeName) {
+    event.respondWith(
+        deleteAllRecordsFromStore(storeName).then(function(recordIds) {
+            return new Response(JSON.stringify({"recordIds": records}), {
+                headers: { 'Content-Type': 'application/json' }
+            });
+        })
+    );
 };
 
 /**
- * Resolves with store object, using store name and record ID
+ * Resolves with one record object from store, using store name.
+ * @param {*} storeName Store name
+ * @param {*} recordId Record ID
+ */
+var getAllRecordsLocal = function(event, storeName) {
+    event.respondWith(
+        getAllRecordsFromStore(storeName).then(function(records) {
+            return new Response(JSON.stringify(records), {
+                headers: { 'Content-Type': 'application/json' }
+            });
+        })
+    );
+};
+
+/**
+ * Resolves with one record object from store, using store name.
+ * @param {*} storeName Store name
+ * @param {*} recordId Record ID
+ */
+var getAllRecordsNetwork = function(event, fetchPath) {
+    event.respondWith(
+        getAllRecordsFromRemoteDB(fetchPath).catch(function() {
+            return new Response(JSON.stringify({"recordId": 'ALL'}), {
+                headers: { 'Content-Type': 'application/json' }
+            });
+        })
+    );
+};
+
+
+
+var postOneRecordLocalThenNetwork = function(event, storeName, requestMethod, fetchPath) {
+    event.respondWith(
+            event.request.json().then(function(record) {
+                return postOneRecordToStore(storeName, record);
+            }).then(function(recordId) {
+                return getOneRecordFromStore(storeName, recordId);
+            }).then(function(record) {
+                console.log('Last record: ', record);
+                return postOneRecordNetwork(record, fetchPath, requestMethod);
+            }).then(function(networkResponse) {
+                console.log('RESP!: ', networkResponse);
+                return responseOK();
+            }).catch(function() {
+                console.log('ERROR');
+            })
+    );
+};
+        
+
+
+var putOneRecordLocalThenNetwork = function(event, storeName, requestMethod, fetchPath) {
+    event.respondWith(
+        putOneRecordLocal(event, storeName, recordId).then(function(recordId) {
+            return getOneRecordLocal(storeName, recordId);
+        }).then(function(record) {
+            console.log('Last record: ', record);
+            return putOneRecordFromRemoteDB(record, fetchPath, requestMethod);
+        }).then(function(networkResponse) {
+            console.log('RESP!: ', networkResponse);
+            return responseOK();
+        }).catch(function() {
+            console.log('ERROR');
+        })
+    );
+};
+
+
+
+
+
+
+/**
+ * Delete one record object from store name, using fetch event and store name. Local first, fallback on network.
+ * @param {*} event 
  * @param {*} storeName 
  * @param {*} recordId 
  */
-var deleteOneRecordFromStore = function(storeName, recordId) {
-    return new Promise(function(resolve, reject) {
-        openDatabase()
-        .then(function(db) {
-            //console.log('MYDB: ', db);
-            return openRecordStore(db, storeName, "readwrite");
-        })
-        .then(function(recordStore) {
-            return deleteRecord(recordStore, recordId);
-        }).then(function(recordStore) {
-            resolve(recordStore);
-        }); 
-    });
-};
-
-/**
- * Resolves with ..., using store object and record ID.
- * @param {*} recordStore Store object
- * @param {*} recordId Record ID
- */
-var deleteRecord = function(recordStore, recordId) {
-    return new Promise(function(resolve, reject) {
-        let deleteRequest = recordStore.delete(recordId);
-        deleteRequest.onsuccess = resolve(recordStore);
-    });
-};
-
-/**
- * Resolves with empty store object, using store object
- * @param {*} recordStore Store object
- */
-var deleteAllRecords = function(recordStore) {
-    return new Promise(function(resolve, reject) {
-        let clearRequest = recordStore.clear();
-        clearRequest.onsuccess = resolve(recordStore);
-    });
-};
-
-
-/**
- * Resolves with empty store object, using store name
- * @param {*} storeName Store name
- */
-var deleteAllRecordsFromStore = function(storeName) {
-    return new Promise(function(resolve, reject) {
-        openDatabase()
-        .then(function(db) {
-            //console.log('MYDB: ', db);
-            return openRecordStore(db, storeName, "readwrite");
-        })
-        .then(function(recordStore) {
-            //console.log('HERE');
-            return deleteAllRecords(recordStore);
-        }).then(function(recordStore) {
-            resolve(recordStore);
-        }); 
-    });
-};
-
-
-/**
- * Fetch all record objects from store name, using fetch event and store name. Network first, fallback on local.
- * @param {*} event fetch event
- * @param {*} storeName Store name
- */
-var getAllRecordsNetworkFirst = function(event, storeName) {
+var deleteOneRecordLocalFirst = function(event, storeName, recordId, fetchPath, record, requestMethod) {
     event.respondWith(
-        fetch(event.request)
-        .then((res) => { return res.json();})
-        .then(function(networkRecords) {
-            return deleteAllRecordsFromStore(storeName)
-                    .then(function(recordStore) {
-                        console.log('NR: ', networkRecords);
-                        return postRecords(recordStore, networkRecords);
-                    })
-                    .then(function() {
-                        return new Response(JSON.stringify(networkRecords), {
-                            headers: { 'Content-Type': 'application/json' }
-                        });
-                    });
+        deleteOneRecordFromStore(storeName, recordId).then(function(recordId) {
+            return new Response(JSON.stringify({"recordId": recordId}), {
+                headers: { 'Content-Type': 'application/json' }
+            });
         })
         .catch(function() {
-            return  getAllRecordsFromStore(storeName)
-                    .then(function(localRecords) {
-                        return new Response(JSON.stringify(localRecords), {
-                            headers: { 'Content-Type': 'application/json' }
-                        });
-                    });
-        }) 
+            return deleteOneRecordFromRemoteDB(record, fetchPath, requestMethod);
+        })                     
     );
 };
 
@@ -562,21 +731,23 @@ var getAllRecordsNetworkFirst = function(event, storeName) {
  * @param {*} storeName 
  * @param {*} recordId 
  */
-var getOneRecordLocalFirst = function(event, storeName, recordId) {
+var getOneRecordLocalFirst = function(event, storeName, recordId, fetchPath, record, requestMethod) {
     event.respondWith(
-        getOneRecordFromStore(storeName, recordId)
-        .then(function(localRecord) {
-            //console.log('myOBJ: ', localRecord);
-            if (localRecord) {
-                return new Response(JSON.stringify(localRecord), {
+        getOneRecordFromStore(storeName, recordId).then(function(record) {
+            return new Response(JSON.stringify(record), {
+                headers: { 'Content-Type': 'application/json' }
+            });
+        })
+        .catch(function() {
+            return getOneRecordFromRemoteDB(record, fetchPath, requestMethod).catch(function() {
+                return new Response(JSON.stringify({"recordId": 'ONE'}), {
                     headers: { 'Content-Type': 'application/json' }
                 });
-            } else {
-                return fetch(event.request);
-            }    
-        })
+            });
+        })    
     );
 };
+
 
 
 /**
@@ -586,40 +757,130 @@ var getOneRecordLocalFirst = function(event, storeName, recordId) {
  * @param {*} recordId 
  */
 var getOneRecordNetworkFirst = function(event, storeName, recordId) {
+    console.log('in the...');
     event.respondWith(
-        fetch(event.request).catch(function() {
-            return getOneRecordFromStore(storeName, recordId)
-                    .then(function(localRecord) {
-                       console.log('My localRecord: ', localRecord);
-                        return new Response(JSON.stringify(localRecord), {
-                            headers: { 'Content-Type': 'application/json' }
-                        });
-                        
-                    });
-        }  
-    )
+        getOneRecordFromRemoteDB(event)
+        .catch(function() {
+            console.log('in the catch');
+            return getOneRecordFromStore(storeName, recordId).then(function(record) {
+                return new Response(JSON.stringify(record), {
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                }).catch(function() {
+                return new Response(JSON.stringify({"recordId": 'ONE'}), {
+                    headers: { 'Content-Type': 'application/json' }
+                });
+            }); 
+        })
     );
 };
 
 
-
 /**
- * Delete one record object from store name, using fetch event and store name. Local first, fallback on network.
+ * Fetch one record object from store name, using fetch event and store name. Local first, fallback on network.
  * @param {*} event 
  * @param {*} storeName 
  * @param {*} recordId 
  */
-var deleteOneRecordLocalFirst = function(event, storeName, recordId) {
+var getAllRecordsLocalFirst = function(event, storeName, fetchPath) {
     event.respondWith(
-        deleteOneRecordFromStore(storeName, recordId)
-        .then(function() {
-            //console.log('try to delete');
-            return fetch(event.request);
-        })                     
+        getAllRecordsFromStore(storeName).then(function(records) {
+            return new Response(JSON.stringify(records), {
+                headers: { 'Content-Type': 'application/json' }
+            });
+        })
+        .catch(function() {
+            return getAllRecordsFromRemoteDB(fetchPath);
+        })    
+    );
+};
+
+/**
+ * Fetch all record objects from store name, using fetch event and store name. Network first, fallback on local.
+ * @param {*} event fetch event
+ * @param {*} storeName Store name
+ */
+var getAllRecordsNetworkFirst = function(event, storeName, fetchPath) {
+    event.respondWith(
+        getAllRecordsFromRemoteDB(fetchPath).catch(function() {
+            return getAllRecordsFromStore(storeName).then(function(localRecords) {
+                return new Response(JSON.stringify(localRecords), {
+                    headers: { 'Content-Type': 'application/json' }
+                });
+            });
+        })    
     );
 };
 
 
+/**
+ * Fetch all record objects from store name, using fetch event and store name. Network first, fallback on local.
+ * @param {*} event fetch event
+ * @param {*} storeName Store name
+ */
+var getAllRecordsNetworkFirstAndReplace = function(event, storeName, fetchPath) {
+    event.respondWith(
+        getAllRecordsFromRemoteDB(fetchPath)
+        .then(function(networkResponse) {
+            console.log('NR#', networkResponse);
+            return networkResponse.json();
+        }).then(function(networkRecords) {
+            return deleteAllRecordsFromStore(storeName)
+                    .then(function(recordStore) {
+                        return postRecords(recordStore, networkRecords);
+                    })
+                    .then(function() {
+                        return new Response(JSON.stringify(networkRecords), {
+                            headers: { 'Content-Type': 'application/json' }
+                        });
+                    });
+        
+        })
+        .catch(function() {
+            console.log('from local');
+            return getAllRecordsFromStore(storeName).then(function(localRecords) {
+                return new Response(JSON.stringify(localRecords), {
+                    headers: { 'Content-Type': 'application/json' }
+                });
+            });
+        })    
+    );
+};
+
+
+
+
+/**
+ * Fetch all record objects from store name, using fetch event and store name. Network first, fallback on local.
+ * @param {*} event fetch event
+ * @param {*} storeName Store name
+ */
+// var getAllRecordsNetworkFirst = function(event, storeName) {
+//     event.respondWith(
+//         fetch(event.request)
+//         .then((res) => { return res.json();})
+//         .then(function(networkRecords) {
+//             return deleteAllRecordsFromStore(storeName)
+//                     .then(function(recordStore) {
+//                         console.log('NR: ', networkRecords);
+//                         return postRecords(recordStore, networkRecords);
+//                     })
+//                     .then(function() {
+//                         return new Response(JSON.stringify(networkRecords), {
+//                             headers: { 'Content-Type': 'application/json' }
+//                         });
+//                     });
+//         })
+//         .catch(function() {
+//             return  getAllRecordsFromStore(storeName)
+//                     .then(function(localRecords) {
+//                         return new Response(JSON.stringify(localRecords), {
+//                             headers: { 'Content-Type': 'application/json' }
+//                         });
+//                     });
+//         }) 
+//     );
+// };
 
 
 
