@@ -1,11 +1,14 @@
 const express = require('express');
 const bodyParser= require('body-parser')
-var path = require('path');
-var mongoose = require('mongoose');
-var Bear = require('./app/models/bear');
+const path = require('path');
+const mongoose = require('mongoose');
+const Bear = require('./app/models/bear');
+const Blog = require('./app/models/blog');
+const Interest = require('./app/models/interest');
+const Inflation = require('./app/models/inflation');
 
 const app = express();
-var routerAPI = express.Router();
+const routerAPI = express.Router();
 
 
 mongoose.connect('mongodb://andersh75:-Gre75mger-@ds161336.mlab.com:61336/mongotest');
@@ -21,6 +24,10 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use(bodyParser.urlencoded({extended: true}));
 app.use(bodyParser.json());
 
+
+
+// ROUTE MIDDLEWARE
+// ==============================================
 
 // route middleware that will happen on every request
 routerAPI.use(bodyParser.urlencoded({extended: true}));
@@ -39,67 +46,45 @@ routerAPI.param('name', function(req, res, next, name) {
 
 
 
-
-
-
-// app.get('/', (req, res) => {
-//     res.sendFile(__dirname + '/public/index.html')
-// });
-
 // ROUTES
 // ==============================================
 
 app.route('/login')
 
-    // show the form (GET http://localhost:8080/login)
     .get(function(req, res) {
         res.send('this is the login form');
     })
 
-    // process the form (POST http://localhost:8080/login)
     .post(function(req, res) {
         console.log('processing');
         res.send('processing the login form!');
     });
 
 
+routerAPI.route('/bear')
+    .post(function(req, res) {
 
+        var bear = new Bear();
+        bear.name = req.body.name;
 
-routerAPI.route('/bears')
+        bear.save(function(err) {
+            if (err)
+                res.send(err);
 
-// create a bear (accessed at POST http://localhost:8080/api/bears)
-.post(function(req, res) {
+            res.json({ message: req.body });
+        });
+    })
+    .get(function(req, res) {
+        Bear.find(function(err, bears) {
+            if (err)
+                res.send(err);
 
-    var bear = new Bear();      // create a new instance of the Bear model
-    bear.name = req.body.name;  // set the bears name (comes from the request)
-
-    // save the bear and check for errors
-    bear.save(function(err) {
-        if (err)
-            res.send(err);
-
-        res.json({ message: req.body });
+            res.json(bears);
+        });
     });
-    
-
-})
 
 
-.get(function(req, res) {
-    Bear.find(function(err, bears) {
-        if (err)
-            res.send(err);
-
-        res.json(bears);
-    });
-});
-
-
-
-
-routerAPI.route('/bears/:bear_id')
-
-    // get the bear with that id (accessed at GET http://localhost:8080/api/bears/:bear_id)
+routerAPI.route('/bear/:bear_id')
     .get(function(req, res) {
         Bear.findById(req.params.bear_id, function(err, bear) {
             if (err)
@@ -107,18 +92,14 @@ routerAPI.route('/bears/:bear_id')
             res.json(bear);
         });
     })
-
     .put(function(req, res) {
-
-        // use our bear model to find the bear we want
         Bear.findById(req.params.bear_id, function(err, bear) {
 
             if (err)
                 res.send(err);
 
-            bear.name = req.body.name;  // update the bears info
+            bear.name = req.body.name;
 
-            // save the bear
             bear.save(function(err) {
                 if (err)
                     res.send(err);
@@ -128,8 +109,6 @@ routerAPI.route('/bears/:bear_id')
 
         });
     })
-
-    // delete the bear with this id (accessed at DELETE http://localhost:8080/api/bears/:bear_id)
     .delete(function(req, res) {
         Bear.remove({
             _id: req.params.bear_id
@@ -142,11 +121,205 @@ routerAPI.route('/bears/:bear_id')
     });
 
 
-    app.route(['/', '/*'])
-    
-    .get((req, res) => {
-        res.sendFile(__dirname + '/public/index.html')
+
+
+
+routerAPI.route('/blog')
+    .post(function(req, res) {
+
+        var blog = new Blog();
+        blog.author = req.body.author;
+        blog.id = req.body.id;
+
+        console.log(req);
+
+        blog.save(function(err) {
+            if (err)
+                res.send(err);
+
+            res.json({ message: req.body });
+        });
+    })
+    .get(function(req, res) {
+        Blog.find(function(err, blogs) {
+            if (err)
+                res.send(err);
+
+            res.json(blogs);
+        });
     });
+
+
+routerAPI.route('/blog/:blog_id')
+    .get(function(req, res) {
+        Blog.findById(req.params.blog_id, function(err, blog) {
+            if (err)
+                res.send(err);
+            res.json(blog);
+        });
+    })
+    .put(function(req, res) {
+        console.log('body', req.body);
+        Blog.findOne({'id': req.params.blog_id}, function(err, blog) {
+
+            if (err)
+                res.send(err);
+
+            blog.author = req.body.author;
+            blog.id = req.body.id;
+            
+
+            blog.save(function(err) {
+                if (err)
+                    res.send(err);
+
+                res.json({ message: 'blog updated!' });
+            });
+
+        });
+    })
+    .delete(function(req, res) {
+        Blog.remove({
+            _id: req.params.blog_id
+        }, function(err, blog) {
+            if (err)
+                res.send(err);
+
+            res.json({ message: 'Successfully deleted' });
+        });
+    });
+
+
+
+routerAPI.route('/inflation')
+    .post(function(req, res) {
+
+        var inflation = new Inflation();
+        inflation.name = req.body.name;
+
+        inflation.save(function(err) {
+            if (err)
+                res.send(err);
+
+            res.json({ message: req.body });
+        });
+    })
+    .get(function(req, res) {
+        Inflation.find(function(err, inflations) {
+            if (err)
+                res.send(err);
+
+            res.json(inflations);
+        });
+    });
+
+
+routerAPI.route('/inflation/:inflation_id')
+    .get(function(req, res) {
+        Inflation.findById(req.params.inflation_id, function(err, inflation) {
+            if (err)
+                res.send(err);
+            res.json(inflation);
+        });
+    })
+    .put(function(req, res) {
+        Inflation.findById(req.params.inflation_id, function(err, inflation) {
+
+            if (err)
+                res.send(err);
+
+            inflation.name = req.body.name;
+
+            inflation.save(function(err) {
+                if (err)
+                    res.send(err);
+
+                res.json({ message: 'inflation updated!' });
+            });
+
+        });
+    })
+    .delete(function(req, res) {
+        Inflation.remove({
+            _id: req.params.inflation_id
+        }, function(err, inflation) {
+            if (err)
+                res.send(err);
+
+            res.json({ message: 'Successfully deleted' });
+        });
+    });
+
+
+
+
+    routerAPI.route('/interest')
+    .post(function(req, res) {
+
+        var interest = new Interest();
+        interest.name = req.body.name;
+
+        interest.save(function(err) {
+            if (err)
+                res.send(err);
+
+            res.json({ message: req.body });
+        });
+    })
+    .get(function(req, res) {
+        Interest.find(function(err, interests) {
+            if (err)
+                res.send(err);
+
+            res.json(interests);
+        });
+    });
+
+
+routerAPI.route('/interest/:interest_id')
+    .get(function(req, res) {
+        Interest.findById(req.params.interest_id, function(err, interest) {
+            if (err)
+                res.send(err);
+            res.json(interest);
+        });
+    })
+    .put(function(req, res) {
+        Interest.findById(req.params.interest_id, function(err, interest) {
+
+            if (err)
+                res.send(err);
+
+            interest.name = req.body.name;
+
+            interest.save(function(err) {
+                if (err)
+                    res.send(err);
+
+                res.json({ message: 'interest updated!' });
+            });
+
+        });
+    })
+    .delete(function(req, res) {
+        Interest.remove({
+            _id: req.params.interest_id
+        }, function(err, interest) {
+            if (err)
+                res.send(err);
+
+            res.json({ message: 'Successfully deleted' });
+        });
+    });
+
+
+
+
+app.route(['/', '/*'])
+
+.get((req, res) => {
+    res.sendFile(__dirname + '/public/index.html')
+});
 
 
 

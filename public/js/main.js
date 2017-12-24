@@ -10,6 +10,44 @@ document.addEventListener('DOMContentLoaded', function() {
 	// .then(function(imageBlob) {
     //     document.getElementById("second").src = URL.createObjectURL(imageBlob);
     // });
+
+    var bearEntry = document.createElement("input");
+    bearEntry.setAttribute('type', 'text');
+    bearEntry.setAttribute('value', 'default');
+    bearEntry.setAttribute('id', 'bearinput');
+
+
+    document.getElementById('first').appendChild(bearEntry);
+
+    var bearButton = document.createElement("button");
+    bearButton.setAttribute("type", "submit");
+
+    bearButton.addEventListener('click', function() {
+        console.log(document.getElementById('bearinput').value);
+
+        var payload = {
+            author: document.getElementById('bearinput').value
+        };
+
+          fetch("/api/blog/2", {
+            method: 'PUT',
+            body: JSON.stringify(payload),
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json'
+            }
+          });
+    });
+
+    document.getElementById('first').appendChild(bearButton);
+
+
+
+
+
+
+
+
     
     var elem = document.createElement("img");
 
@@ -17,7 +55,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     document.getElementById("second").appendChild(elem);
 
-    fetch('http://localhost:4000/api/bears/5a3c4134b5f523b1617c60ed')
+    fetch('http://localhost:4000/api/bear/5a3c4134b5f523b1617c60ed')
     .then((res) => { return res.json()})
     .then((data) => { /*
         let result = '<h2> Users Info </h2>';
@@ -33,7 +71,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
 
 
-        fetch('http://localhost:4000/api/bears/5a3c38300245d4af96ec7173')
+        fetch('http://localhost:4000/api/bear/5a3c38300245d4af96ec7173')
     .then((res) => { return res.json()})
     .then((data) => { /*
         let result = '<h2> Users Info </h2>';
@@ -48,7 +86,7 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('fourth').innerHTML = JSON.stringify(data);
         });
 
-        fetch('http://localhost:4000/api/bears')
+        fetch('http://localhost:4000/api/bear')
         .then((res) => { return res.json()})
         .then((data) => { /*
             let result = '<h2> Users Info </h2>';
@@ -65,7 +103,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 
 
-            var request = new Request('http://localhost:4000/api/bears/5a3a6e0b88d81d72a6600f43', {
+            var request = new Request('http://localhost:4000/api/bear/5a3a6e0b88d81d72a6600f43', {
                 method: 'DELETE', 
                 mode: 'cors', 
                 redirect: 'follow',
