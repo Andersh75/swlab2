@@ -36,7 +36,14 @@ document.addEventListener('DOMContentLoaded', function() {
               'Content-Type': 'application/json',
               'Accept': 'application/json'
             }
-          });
+          }).then((res) => {
+            console.log('res');
+             return res.json()})
+        .then((data) => {
+            document.getElementById('sixth').innerHTML = JSON.stringify(data);
+            }).catch(function (e) {
+                document.getElementById('fourth').innerHTML = e;
+            });
     });
 
     document.getElementById('first').appendChild(bearButton);
@@ -74,7 +81,7 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('fourth').innerHTML = e;
         });
 
-        fetch('http://localhost:4000/api/bear')
+        fetch('http://localhost:4000/api/blog')
         .then((res) => { return res.json()})
         .then((data) => { 
             document.getElementById('fifth').innerHTML = JSON.stringify(data);

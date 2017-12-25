@@ -31,9 +31,11 @@ self.addEventListener('fetch', function (event) {
                 //getAllRecordsLocalFirst(event, storeName, fetchPath);
 
                 break;
-            // case 'POST':
-            //     postOneRecordLocalThenNetwork(event, storeName, requestMethod, fetchPath);
-            //     break;
+            case 'POST':
+                // postOneRecordLocal(event, storeName);
+                // postOneRecordNetwork(event, fetchPath, requestMethod);
+                postOneRecordLocalThenNetwork(event, storeName, requestMethod, fetchPath);
+                break;
         }
       } else if (requestURLArray[1] === 'api' && requestURLArray.length === 4) {
         let storeName = requestURLArray[2];
@@ -42,19 +44,17 @@ self.addEventListener('fetch', function (event) {
         //console.log('Service Worker fetching API for one bear: ', recordId);
         switch(requestMethod) {
             // case 'DELETE':
-            //     deleteOneRecordLocalFirst(event, storeName, recordId);
             //     break;
             case 'GET':
                 console.log('Get one...');
                 //getOneRecordNetwork(event);
                 //getOneRecordLocal(event, storeName, recordId);
-                //getOneRecordNetworkFirst(event, storeName, recordId);
-                getOneRecordLocalFirst(event, storeName, recordId);
+                getOneRecordNetworkFirst(event, storeName, recordId);
+                //getOneRecordLocalFirst(event, storeName, recordId);
 
 
                 break;
-            // case 'PUT':
-                
+            // case 'PUT':       
             //     break;
         }
       } else {
@@ -95,6 +95,15 @@ var fetchBody = function(requestMethod, record, type) {
 var responseOK = function() {
     return new Promise(function(resolve, reject) {
         resolve(new Response(JSON.stringify({status: "OK"}), {
+            headers: { 'Content-Type': 'application/json' }
+        }));
+    });
+};
+
+
+var responseNotOK = function() {
+    return new Promise(function(resolve, reject) {
+        resolve(new Response(JSON.stringify({status: "NotOK"}), {
             headers: { 'Content-Type': 'application/json' }
         }));
     });
@@ -404,10 +413,12 @@ var postOneRecordToStore = function(storeName, record) {
     return new Promise(function(resolve, reject) {
         openDatabase()
         .then(function(db) {
-            //console.log('MYDB: ', db);
+            console.log('MYDB: ', db);
             return openRecordStore(db, storeName, "readwrite");
         })
         .then(function(recordStore) {
+            console.log('record: ', record);
+            console.log('recordStore: ', recordStore);
             return postOneRecord(recordStore, record);
         }).then(function(recordId) {
             console.log('postOneRecordToStore RECORDID: ', recordId);
@@ -570,15 +581,15 @@ var getOneRecordLocal = function(event, storeName, recordId) {
  * @param {*} storeName 
  */
 var postOneRecordLocal = function(event, storeName) {
-    return new Promise(function(resolve, reject) {
+    event.respondWith(
         event.request.json().then(function(record) {
             return postOneRecordToStore(storeName, record);
         }).then(function(recordId) {
             return new Response(JSON.stringify({"recordId": recordId}), {
                 headers: { 'Content-Type': 'application/json' }
             });
-        });
-    });
+        })
+    );
 };
 
 
@@ -615,6 +626,18 @@ var getOneRecordNetwork = function(event) {
     );
 };
 
+var postOneRecordNetwork = function(event, fetchPath, requestMethod) {
+    event.respondWith(
+        event.request.json().then(function(record) {
+            return postOneRecordToRemoteDB(record, fetchPath, requestMethod);
+        })
+        .catch(function() {
+            return new Response(JSON.stringify({"recordId": 'ONE'}), {
+                headers: { 'Content-Type': 'application/json' }
+            });
+        })
+    );
+};
 
 
 /**
@@ -667,17 +690,25 @@ var getAllRecordsNetwork = function(event, fetchPath) {
 var postOneRecordLocalThenNetwork = function(event, storeName, requestMethod, fetchPath) {
     event.respondWith(
             event.request.json().then(function(record) {
+                console.log('First record: ', record);
                 return postOneRecordToStore(storeName, record);
             }).then(function(recordId) {
+                console.log('First recordId: ', recordId);
                 return getOneRecordFromStore(storeName, recordId);
             }).then(function(record) {
-                console.log('Last record: ', record);
-                return postOneRecordNetwork(record, fetchPath, requestMethod);
+                console.log('Third record: ', record);
+                return postOneRecordToRemoteDB(record, fetchPath, requestMethod);
             }).then(function(networkResponse) {
                 console.log('RESP!: ', networkResponse);
-                return responseOK();
+                if (networkResponse) {
+                    console.log(networkResponse);
+                    return responseOK();
+                } else {
+                     return responseNotOK();
+                }  
             }).catch(function() {
-                console.log('ERROR');
+                console.log('jhgjhgjjjjjjj');
+                return responseNotOK();
             })
     );
 };
