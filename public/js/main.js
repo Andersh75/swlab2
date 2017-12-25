@@ -23,6 +23,12 @@ document.addEventListener('DOMContentLoaded', function() {
     bearButton.setAttribute("type", "submit");
 
     bearButton.addEventListener('click', function() {
+        navigator.serviceWorker.ready.then(function(registration) {
+            registration.sync.register('/blog/post/waiting').then(() => {
+                console.log('Sync registered');
+            });
+        });
+        
         console.log(document.getElementById('bearinput').value);
 
         var payload = {
@@ -37,11 +43,22 @@ document.addEventListener('DOMContentLoaded', function() {
               'Accept': 'application/json'
             }
           }).then((res) => {
-            console.log('res');
+            console.log('resp in main');
              return res.json()})
+            //  .then((data) => {
+            //      return new Promise(function(resolve, reject) {
+            //         console.log('data: ',data);
+            //         navigator.serviceWorker.ready.then(function(registration) {
+            //             registration.sync.register("message-queue-sync");
+            //           });
+            //     resolve(data);
+            //      });
+                 
+            //     })
         .then((data) => {
             document.getElementById('sixth').innerHTML = JSON.stringify(data);
-            }).catch(function (e) {
+            })
+            .catch(function (e) {
                 document.getElementById('sixth').innerHTML = e;
             });
     });

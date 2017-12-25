@@ -161,12 +161,13 @@ routerAPI.route('/blog/:blog_id')
     .put(function(req, res) {
         //console.log('body', req.body);
         Blog.findOne({'id': req.params.blog_id}, function(err, blog) {
+            console.log(req.body);
+            console.log(blog);
 
             if (err)
                 res.send(err);
 
             blog.author = req.body.author;
-            blog.id = req.body.id;
             
 
             blog.save(function(err) {
