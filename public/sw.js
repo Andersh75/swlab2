@@ -24,10 +24,10 @@ self.addEventListener('fetch', function (event) {
         switch(requestMethod) {
             case 'GET':
                 console.log('Get all...');
-                //getAllRecordsNetwork(event, fetchPath);
+                getAllRecordsNetwork(event, fetchPath);
                 //getAllRecordsLocal(event, storeName);
                 //getAllRecordsNetworkFirstAndReplace(event, storeName, fetchPath);
-                getAllRecordsNetworkFirst(event, storeName, fetchPath);
+                //getAllRecordsNetworkFirst(event, storeName, fetchPath);
                 //getAllRecordsLocalFirst(event, storeName, fetchPath);
 
                 break;
@@ -43,13 +43,16 @@ self.addEventListener('fetch', function (event) {
         let fetchPath = '/' + requestURLArray[1] + '/' + requestURLArray[2] + '/' + requestURLArray[3];
         //console.log('Service Worker fetching API for one bear: ', recordId);
         switch(requestMethod) {
-            // case 'DELETE':
-            //     break;
+            case 'DELETE':
+                //deleteOneRecordNetwork(event);
+                //deleteOneRecordLocal(event, storeName, recordId);
+                deleteOneRecordNetworkFirst(event, storeName, recordId);
+                 break;
             case 'GET':
                 console.log('Get one...');
-                //getOneRecordNetwork(event);
+                getOneRecordNetwork(event);
                 //getOneRecordLocal(event, storeName, recordId);
-                getOneRecordNetworkFirst(event, storeName, recordId);
+                //getOneRecordNetworkFirst(event, storeName, recordId);
                 //getOneRecordLocalFirst(event, storeName, recordId);
 
 
@@ -236,10 +239,12 @@ var openRecordStore = function(db, storeName, transactionmode) {
  */
 var deleteOneRecord = function(recordStore, recordId) {
     return new Promise(function(resolve, reject) {
-        let deleteRequest = recordStore.delete(recordId);
+        console.log('deleteonerecord recordId: ', recordId);
+        console.log('deleteonerecord store: ', recordStore);
+        let deleteRequest = recordStore.delete(Number(recordId));
         deleteRequest.onsuccess =  function(event) {
-            let recordId = event.target.result;
-            console.log('deleteRecord RECORDID: ', recordId);
+            //let recordId = event.target;
+            console.log('Deleted: ', recordId);
             resolve(recordId);
         };
     });
@@ -449,8 +454,12 @@ var putOneRecordToStore = function(storeName, record, recordId) {
     });
 };
 
-var deleteOneRecordFromRemoteDB = function(record, fetchPath, requestMethod) {
-    return fetch(fetchPath, fetchBody(requestMethod, record, 'json'));
+// var deleteOneRecordFromRemoteDB = function(record, fetchPath, requestMethod) {
+//     return fetch(fetchPath, fetchBody(requestMethod, record, 'json'));
+// };
+
+var deleteOneRecordFromRemoteDB = function(event) {
+    return fetch(event.request);
 };
 
 
@@ -548,7 +557,7 @@ var getLastRecordFromStore = function(storeName) {
  * @param {*} storeName Store name
  * @param {*} recordId Record ID
  */
-var deleteOneRecordLocal = function(storeName, recordId) {
+var deleteOneRecordLocal = function(event, storeName, recordId) {
     event.respondWith(
         deleteOneRecordFromStore(storeName, recordId).then(function(recordId) {
             return new Response(JSON.stringify({"recordId": recordId}), {
@@ -610,6 +619,21 @@ var putOneRecordLocal = function(event, storeName, recordId) {
      });
 };
 
+
+/**
+ * Resolves with one record object from store, using store name.
+ * @param {*} storeName Store name
+ * @param {*} recordId Record ID
+ */
+var deleteOneRecordNetwork = function(event) {
+    event.respondWith(
+        deleteOneRecordFromRemoteDB(event).catch(function() {
+            return new Response(JSON.stringify({"recordId": 'ONE'}), {
+                headers: { 'Content-Type': 'application/json' }
+            });
+        })
+    );
+};
 
 /**
  * Resolves with one record object from store, using store name.
@@ -779,7 +803,30 @@ var getOneRecordLocalFirst = function(event, storeName, recordId, fetchPath, rec
     );
 };
 
-
+/**
+ * Fetch one record object from store name, using fetch event and store name. Network first, fallback on local.
+ * @param {*} event 
+ * @param {*} storeName 
+ * @param {*} recordId 
+ */
+var deleteOneRecordNetworkFirst = function(event, storeName, recordId) {
+    console.log('in the...');
+    event.respondWith(
+        deleteOneRecordFromRemoteDB(event)
+        .catch(function() {
+            console.log('in the catch');
+            return deleteOneRecordFromStore(storeName, recordId).then(function(recordId) {
+                return new Response(JSON.stringify(recordId), {
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                }).catch(function() {
+                return new Response(JSON.stringify({"recordId": 'ONE'}), {
+                    headers: { 'Content-Type': 'application/json' }
+                });
+            }); 
+        })
+    );
+};
 
 /**
  * Fetch one record object from store name, using fetch event and store name. Network first, fallback on local.

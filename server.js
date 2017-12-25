@@ -180,12 +180,17 @@ routerAPI.route('/blog/:blog_id')
     })
     .delete(function(req, res) {
         Blog.remove({
-            _id: req.params.blog_id
+            id: req.params.blog_id
         }, function(err, blog) {
-            if (err)
+            if (err) {
+                console.log('ERROR!');
                 res.send(err);
+            } else {
+                console.log('DELETED!');
+                res.json({ message: 'Successfully deleted' });
+            }
 
-            res.json({ message: 'Successfully deleted' });
+
         });
     });
 

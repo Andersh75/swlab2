@@ -42,11 +42,51 @@ document.addEventListener('DOMContentLoaded', function() {
         .then((data) => {
             document.getElementById('sixth').innerHTML = JSON.stringify(data);
             }).catch(function (e) {
-                document.getElementById('fourth').innerHTML = e;
+                document.getElementById('sixth').innerHTML = e;
             });
     });
 
     document.getElementById('first').appendChild(bearButton);
+
+
+
+
+    var deleteEntry = document.createElement("input");
+    deleteEntry.setAttribute('type', 'text');
+    deleteEntry.setAttribute('value', 'default');
+    deleteEntry.setAttribute('id', 'deleteinput');
+
+
+    document.getElementById('delete').appendChild(deleteEntry);
+
+    var deleteButton = document.createElement("button");
+    deleteButton.setAttribute("type", "submit");
+
+    deleteButton.addEventListener('click', function() {
+        console.log(document.getElementById('deleteinput').value);
+
+        var payload = {
+            id: document.getElementById('deleteinput').value
+        };
+
+          fetch("/api/blog/" + payload.id, {
+            method: 'DELETE',
+            //body: JSON.stringify(payload),
+            // headers: {
+            //   'Content-Type': 'application/json',
+            //   'Accept': 'application/json'
+            // }
+          }).then((res) => {
+            console.log('res');
+             return res.json()})
+        .then((data) => {
+            document.getElementById('seventh').innerHTML = JSON.stringify(data);
+            }).catch(function (e) {
+                document.getElementById('seventh').innerHTML = e;
+            });
+    });
+
+    document.getElementById('delete').appendChild(deleteButton);
 
 
 
