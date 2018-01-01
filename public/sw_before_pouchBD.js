@@ -1,4 +1,3 @@
-
 //WORKS
 importScripts('/js/pouchdb-6.4.1.js');
 db = PouchDB('kittens');

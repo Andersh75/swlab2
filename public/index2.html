@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Countries CRUD</title>
+  <style>
+    input[type='submit'], button, [aria-label]{
+      cursor: pointer;
+    }
+    #spoiler{
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+<form action="javascript:void(0);" method="POST" onsubmit="addAndReload()"> 
+  <input type="text" id="add-name" placeholder="New country">
+  <input type="submit" value="Add">
+</form>
+
+<!-- <form action="javascript:void(0);" method="POST" id="saveEdit">
+    <input type="text" id="edit-name">
+    <input type="submit" value="Edit" /> <a onclick="CloseInput()" aria-label="Close">&#10006;</a>
+</form> -->
+
+
+<p id="counter"></p>
+
+<table>
+  <tr>
+    <th>Name</th>
+  </tr>
+    <tbody id="countries">
+    </tbody>
+</table>
+
+<script type="text/javascript" src="/ifServiceWorker.js"></script>
+<script type="text/javascript" src="/js/pouchdb-6.4.1.js"></script>
+<script type="text/javascript" src="/js/main.js"></script>
+
+<script src="//cdn.jsdelivr.net/npm/pouchdb@6.4.1/dist/pouchdb.min.js"></script>
+
+<script>
+
+
+
+</script>
+
+</body>
+</html>
+
