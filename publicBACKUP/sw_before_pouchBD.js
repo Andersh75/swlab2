@@ -1,4 +1,3 @@
-
 //WORKS
 importScripts('/js/pouchdb-6.4.1.js');
 db = PouchDB('kittens');
@@ -41,28 +40,10 @@ self.addEventListener('sync', function (event) {
     if (event.tag.includes('kittens')) {
         console.log('In Sync Kittens SW');
         event.waitUntil(
-            // db.sync(remoteCouch).on('complete', function () {
-            //     console.log('in sync');
-            //     }).on('error', function (err) {
-            //     console.log('sync error');
-            // })
-            db.sync(remoteCouch, {conflicts: true, include_docs: true})
-            .then(function (resp) {
+            db.sync(remoteCouch).on('complete', function () {
                 console.log('in sync');
-                console.log(resp);
-                // db.allDocs({
-                //     conflicts: true,
-                //     include_docs: true,
-                //     attachments: true
-                // }).then(function (docs) {
-                //     console.log(docs);
-                // });
- 
-            })
-            .catch(function (err) {
-                console.log('error sync');
-                console.log(err);
-                //return Promise.reject();
+                }).on('error', function (err) {
+                console.log('sync error');
             })
         );
     }

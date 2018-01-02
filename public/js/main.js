@@ -1,178 +1,309 @@
+'use strict';
+
+
+
+
+
+
 document.addEventListener('DOMContentLoaded', function() {
-
-    document.getElementById('add-button').addEventListener('click', function () {
-        addAndReload();
-    });
-
-    // document.getElementById('edit-button').addEventListener('click', function () {
-    //     editAndReload();
-    // });
-
-    // document.getElementById('delete-button').addEventListener('click', function () {
-    //     deleteAndReload();
-    // });
-
-
-    var db = new PouchDB('kittens');
-
-    fetchAll().then((countries) => displayList(countries))
-    
     var remoteCouch = 'http://127.0.0.1:5984/kittens';
-    
-    
-    function fetchAll() {
-        var el = document.getElementById('countries');
-          return db.allDocs({
-              include_docs: true,
-              attachments: true
-          });  
-    }
-    
-    
-    function editAndReload(itemId) {
-        editOne(itemId)
-        .then((country) => editRecord(country, itemId))
-        // editRecord(itemId)
-        .then(() => fetchAll())
-        .then((countries) => displayList(countries))
-        .then(() => {
-            db.sync(remoteCouch).on('complete', function () {
-                console.log('in sync');
-                }).on('error', function (err) {
-                console.log('sync error');
+
+    new PouchDB('kittens')
+    .info()
+    .then(function () {
+        return new PouchDB('kittens');
+    })
+    .then(function(db) {
+
+        db.changes({
+            since: 'now',
+            conflicts: true,
+            live: true,
+            include_docs: true
+            }).on('change', function (change) {
+            console.log('change');
+            console.log(change);
+            }).on('error', function (err) {
+            console.log('ERROR');
+            });
+        
+
+        //db.sync(remoteCouch, { live: true, retry: true, conflicts: true});
+
+        console.log(db);
+        navigator.serviceWorker.ready.then(function(registration) {
+            registration.sync.register('kittens').then(() => {
+                console.log('Sync registered');
+                //console.log('tags: ', registration.sync.getTags());
+                console.log('SYNKED');
+                
+                fetchAll(db).then((countries) => displayList(countries, 'countries', db));
             });
         });
-    }
-    
-    function editOne(itemId) {
-        console.log('ID', itemId);
-        return new Promise(function(resolve, reject) {
-            var el = document.getElementById('editField-' + itemId);
-            var country = el.value;
-            if (country) {
-                el.value = '';
-                resolve(country);
+        
+
+        document.getElementById('add-button').addEventListener('click', function () {
+            addAndReload('countries', 'kittens', db);
+        });
+
+
+
+        function fetchAll(db) {
+            //var el = document.getElementById(id);
+              return db.allDocs({
+                  include_docs: true,
+                  attachments: true
+              });  
+        }
+        
+        
+        function editAndReload(itemId, id, syncName, db) {
+            editOne(itemId)
+            .then((country) => {
+                console.log(country);
+                console.log(itemId);
+                console.log(db);
+                return editRecord(country, itemId, db);
+            })
+            // editRecord(itemId)
+            //.then(() => fetchAll(db))
+            //.then((countries) => displayList(countries, id, db))
+            .then(() => {
+                // db.replicate.from(remoteCouch).on('complete', function () {
+                //     console.log('we are n sync');
+                //     db.get(itemId, {conflicts: true}).then(function(doc) {
+                //         console.log('HERE!!');
+                //         console.log(doc);
+                //         fetchAll(db).then((countries) => displayList(countries, 'countries', db));
+                //     });
+                //   });
+
+                  db.sync(remoteCouch)
+                  .then(function(item) {
+                    console.log('ITEM');
+                    console.log(item);
+
+                  })
+                  .then(function() {
+                    db.get(itemId, {conflicts: true}).then(function(doc) {
+                        console.log('HERE!!');
+                        console.log(doc);
+                        var el = helper.dom.getElement('id', 'conflicts');
+                        el.innerHTML = '';
+                        if (doc._conflicts) {
+                            console.log(doc._conflicts);
+
+
+                            //FIX SIMILAR IDS
+                            
+                                // let newDiv = helper.dom.createElement('div');
+                                //     newDiv.innerHTML = '<div>' + doc.country + '</div><button data-rev="' + doc._rev + '" id="' + "rev-" + doc._id + '">Remove Conflict</button>';
+                                //     newDiv.children[1].addEventListener('click', function (event) {
+                                //         console.log(event.target);
+                                //         db.remove(event.target.getAttribute('id').slice(4), event.target.getAttribute('data-rev'));
+                                //     });
+
+                                //     el.appendChild(newDiv);
+                            doc['_conflicts'].forEach(element => {
+                                
+                                db.get(itemId, {rev: element}).then(function (doc) {
+                                    
+                                    //el.innerHTML = "jhgjhgjhg";
+                                    let newDiv = helper.dom.createElement('div');
+                                    newDiv.innerHTML = '<div>' + doc.country + '</div><button data-rev="' + doc._rev + '" id="' + "rev-" + doc._id + '">Remove Conflict</button>';
+                                    newDiv.children[1].addEventListener('click', function (event) {
+                                        console.log(event.target);
+                                        db.remove(event.target.getAttribute('id').slice(4), event.target.getAttribute('data-rev'));
+                                    });
+
+                                    el.appendChild(newDiv);
+                                    console.log(doc);
+                                  }).catch(function (err) {
+                                    // handle any errors
+                                  });
+                            });
+                            
+                        }
+                        
+                        fetchAll(db).then((countries) => displayList(countries, 'countries', db));
+                    });
+                  });
+            });
+        }
+        
+        function editOne(itemId) {
+            console.log('ID', itemId);
+            return new Promise(function(resolve, reject) {
+                var el = document.getElementById('editField-' + itemId);
+                var country = el.value;
+                if (country) {
+                    el.value = '';
+                    resolve(country);
+                }
+            })
+        }
+        
+        function editRecord(item, itemId, db) {
+            return db.get(itemId, {conflicts: true}).then(function(doc) {
+                console.log(doc);
+                doc.country = item;
+                return db.put(doc);
+            }).catch(function(err) {
+                console.log(err);
+            });  
+        }
+        
+        function deleteAndReload(itemId, id, syncName, db) {
+            deleteOne(itemId, db)
+            //.then(() => fetchAll(db))
+            //.then((countries) => displayList(countries, id, db))
+            .then(() => {
+                db.sync(remoteCouch).on('complete', function () {
+                    db.get(itemId, {conflicts: true}).then(function(doc) {
+                        console.log('HERE!!');
+                        console.log(doc);
+                        fetchAll(db).then((countries) => displayList(countries, 'countries', db));
+                    });
+                  });
+            });
+        }
+        
+        
+        function addAndReload(id, syncName, db) {
+            console.log('db in addandreload');
+            console.log(db);
+            addOne()
+            .then((country) => addRecord(country, db))
+            //.then(() => fetchAll(db))
+            //.then((countries) => displayList(countries, id, db))
+            .then(() => {
+                db.sync(remoteCouch).on('complete', function () {
+                    console.log('we are n sync');
+                    fetchAll(db).then((countries) => displayList(countries, 'countries', db));
+                  });
+            });
+        }
+        
+        function deleteOne(item, db) {
+            return db.get(item, {conflicts: true}).then(function(doc) {
+                console.log(doc);
+                return db.remove(doc);
+            });  
+        }
+        
+        
+        function addRecord(item, db) {
+            let doc = {
+            _id: new Date().toISOString(),
+            country: item
+            };
+            return db.put(doc);   
+        }
+        
+        
+        function addOne() {
+            return new Promise(function(resolve, reject) {
+                var el = document.getElementById('add-name');
+                var country = el.value;
+                if (country) {
+                    el.value = '';
+                    resolve(country);
+                }
+            });
+        }
+        
+        /// SKA BARA GÖRA EN RAD I TAGET - ÄDRA ÄVEN FRÅN TABLE TILL DIV
+        function displayList(countries, id, db) {
+            console.log('db');
+            console.log(db);
+            //var el = document.getElementById(id);
+            var el = helper.dom.getElement('id', id);
+        
+            let data = '';
+            el.innerHTML = data;
+            if (countries.rows.length > 0) {
+                for (var i = 0; i < countries.rows.length; i++) {
+                    let data = '';
+        
+                    data += '<td>' + countries.rows[i].doc.country + '</td>';
+                    data += '<td><input type="text" id="' + "editField-" + countries.rows[i].doc._id + '"><button id="' + "editButton-" + countries.rows[i].doc._id + '">Edit</button></td>';
+                    data += '<td><input type="text" id="' + "deleteField-" + countries.rows[i].doc._id + '"><button id="' + "deleteButton-" + countries.rows[i].doc._id + '">Delete</button></td>';
+                
+                    let tblrow = helper.dom.createElement('tr');
+                    tblrow.innerHTML = data;
+                    //el.innerHTML += data;
+        
+                    let editField = tblrow.children[1].children[0];
+                    let editButton = tblrow.children[1].children[1];
+                
+                    editButton.addEventListener('click', function () {
+                        console.log('db in event listener');
+                        console.log(db);
+                        editAndReload(editField.getAttribute('id').slice(10), 'countries', 'kittens', db);
+                    });
+                
+                
+                    let deleteField = tblrow.children[2].children[0];
+                    let deleteButton = tblrow.children[2].children[1];
+                
+                    deleteButton.addEventListener('click', function () {
+                        deleteAndReload(deleteField.getAttribute('id').slice(12), 'countries', 'kittens', db);
+                    });
+                
+                    //console.log(tblrow.children[0].children[1].children[0].getAttribute('id'));
+                
+                    el.appendChild(tblrow);
+                }
             }
-        })
-    }
-    
-    function editRecord(item, itemId) {
-        return db.get(itemId, {conflicts: true}).then(function(doc) {
-            console.log(doc);
-            doc.country = item;
-            return db.put(doc);
-        }).catch(function(err) {
-            console.log(err);
-        });  
-    }
-    
-    function deleteAndReload(itemId) {
-        deleteOne(itemId)
-        .then(() => fetchAll())
-        .then((countries) => displayList(countries))
-        .then(() => {
-            db.sync(remoteCouch).on('complete', function () {
-                console.log('in sync');
-                }).on('error', function (err) {
-                console.log('sync error');
-            });
-        });
-    }
-    
-    // function addAndReload() {
-    //     addOne()
-    //     .then((country) => addRecord(country))
-    //     .then(() => fetchAll())
-    //     .then((countries) => displayList(countries))
-    //     .then(() => {
-    //         db.sync(remoteCouch).on('complete', function () {
-    //             console.log('in sync');
-    //             }).on('error', function (err) {
-    //             console.log('sync error');
-    //         });
-    //     });
-    // }
-
-
-    function addAndReload() {
-        addOne()
-        .then((country) => addRecord(country))
-        .then(() => fetchAll())
-        .then((countries) => displayList(countries))
-        .then(() => {
-            navigator.serviceWorker.ready.then(function(registration) {
-                registration.sync.register('kittens').then(() => {
-                    console.log('Sync registered');
-                    //console.log('tags: ', registration.sync.getTags());
-                });
-            });
-
+        
             
-        });
-    }
-    
-    function deleteOne(item) {
-        return db.get(item, {conflicts: true}).then(function(doc) {
-            console.log(doc);
-            return db.remove(doc);
-        });  
-    }
-    
-    
-    function addRecord(item) {
-        let doc = {
-        _id: new Date().toISOString(),
-        country: item
-        };
-        return db.put(doc);   
-    }
-    
-    
-    function addOne() {
-        return new Promise(function(resolve, reject) {
-            var el = document.getElementById('add-name');
-            var country = el.value;
-            if (country) {
-                el.value = '';
-                resolve(country);
-            }
-        });
-    }
-    
-    
-    function displayList(countries) {
-        var el = document.getElementById('countries');
-        var data = '';
-        if (countries.rows.length > 0) {
-            for (i = 0; i < countries.rows.length; i++) {
-                data += '<tr>';
-                data += '<td>' + countries.rows[i].doc.country + '</td>';
-                data += '<td><input type="text" id="' + "editField-" + countries.rows[i].doc._id + '"><button id="' + "editButton-" + countries.rows[i].doc._id + '">Edit</button></td>';
-                data += '<td><input type="text" id="' + "deleteField-" + countries.rows[i].doc._id + '"><button id="' + "deleteButton-" + countries.rows[i].doc._id + '">Delete</button></td>';
-                data += '</tr>';
-            }
+            return el;
         }
 
-        el.innerHTML = data;
-
-        let editField = el.children[0].children[1].children[0];
-        let editButton = el.children[0].children[1].children[1];
-
-        editButton.addEventListener('click', function () {
-            editAndReload(editField.getAttribute('id').slice(10));
-        });
 
 
-        let deleteField = el.children[0].children[2].children[0];
-        let deleteButton = el.children[0].children[2].children[1];
 
-        deleteButton.addEventListener('click', function () {
-            deleteAndReload(deleteField.getAttribute('id').slice(12));
-        });
 
-        console.log(el.children[0].children[1].children[0].getAttribute('id'));
-        return el;
-    }
+
+    });
+
+
+    
+
+
+    
+
+    
+    
+
+    
+    
+    
+    
+    
+    
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
     document.getElementById("first").innerHTML = '<h1>Paragraph changed!</h1>';
@@ -328,36 +459,18 @@ document.addEventListener('DOMContentLoaded', function() {
 
 
 
-            // var request = new Request('http://localhost:4000/api/bear/5a3a6e0b88d81d72a6600f43', {
-            //     method: 'DELETE', 
-            //     mode: 'cors', 
-            //     redirect: 'follow',
-            //     headers: new Headers({
-            //         'Content-Type': 'text/json'
-            //     })
-            // });
-            
-            // // Now use it!
-            // setTimeout(function() {
-            //     fetch(request);
-            // }, 3000);
-
-
-            
-
-
-       
-
-    // fetch('http://localhost:4000/api/bears').then(function(myres) {
-    //     console.log('myres: ', myres);
-    //     //document.getElementById('third').innerHTML = myres[0].name;
-    // });
-
-    
-    
-
-
-
 }, false);
 
 
+
+
+
+
+            //     navigator.serviceWorker.ready.then(function(registration) {
+            //         registration.sync.register(syncName).then(() => {
+            //             console.log('Sync registered');
+            //             //console.log('tags: ', registration.sync.getTags());
+            //             console.log('SYNKED');
+            //             fetchAll(db).then((countries) => displayList(countries, 'countries', db));
+            //         });
+            //     });
