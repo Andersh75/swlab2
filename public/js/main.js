@@ -33,31 +33,275 @@ document.addEventListener('DOMContentLoaded', function() {
         db.sync(remoteCouch, { live: true, retry: true, conflicts: true, include_docs: true})
         .on('change', function (info) {
             //console.log(new Date().toISOString());
-            //console.log(info);
+            
             info.syncTime = new Date().toISOString();
             log.push(info);
 
+            //console.log(info);
+
             if ((info.direction == "pull") && (info.change.docs.length < 2)) {
                 console.log("Normal pull");
+                console.log(info);
+                console.log(info.change.docs[0]);
+               myFunction(info.change.docs[0]);
+                // if () {
+
+                // }
             }
 
              else if ((info.direction == "pull") && (info.change.docs.length > 1)) {
                 console.log("Bulk pull");
+                //console.log(info);
+                console.log(info.change.docs);
+                myFunction(info.change.docs);
+
             }
 
             else if ((info.direction == "push") && (info.change.docs.length < 2)) {
                 console.log("Normal push");
+                console.log(info);
             }
 
             else if ((info.direction == "push") && (info.change.docs.length > 1)) {
                 console.log("Bulk push");
+                console.log(info);
+
             }   
             else {
                 console.log('NOT ANY OF THE PUSH AND PULLS');
             console.log(log);
             }
-           // if(info)
-            fetchAll(db).then((countries) => displayList(countries, 'countries', db));
+
+            let el = helper.dom.getElement('id', 'conflicts');
+
+            helper.dom.appendInnerHTMLIO('', el);
+
+            fetchAll(db)
+            .then((docs) => getConflictRows(docs))
+            // .then((conflictingObjs) => {
+            //     console.log(conflictingObjs);
+            // });
+            .then((conflictRows) => getConflictingObjs(conflictRows, db))
+            .then((conflictingObjs) => {
+                console.log(conflictingObjs);
+                if (!isEmpty(conflictingObjs)) {
+                    displayConflicts(conflictingObjs);
+                }
+                
+            });
+
+
+            function myFunction(tmpAr) {
+                // let tmpStr = helper.reduce(helper.str.adder, '')(tmpAr.forEach(function(item) {
+                //     return item.country;
+                // }));
+                var txt;
+                if (confirm("Do you want these? " + tmpAr.country) == true) {
+                    txt = "You pressed OK!";
+                    fetchAll(db)
+                    .then((countries) => displayList(countries, 'countries', db))
+                    // .then(() => db.sync(remoteCouch, { conflicts: true, include_docs: true}))
+                    // .then(function() {
+                    //     console.log('sy');
+                    //     fetchAll(db).then((countries) => displayList(countries, 'countries', db));
+                    // });
+                } else {
+                    txt = "You pressed Cancel!";
+                    console.log((tmpAr._revisions.ids.length - 1) + '-' + tmpAr._revisions.ids[1]);
+                    console.log(tmpAr._id);
+                    console.log(tmpAr._revisions.ids[tmpAr._revisions.ids.length - 1]);
+
+
+                    let oldRev = (tmpAr._revisions.ids.length - 1) + '-' + tmpAr._revisions.ids[1];
+                    let oldId = tmpAr._id;
+
+
+
+                    db.get(oldId, {rev: oldRev, include_docs: true})
+                    //.then((doc) => console.log(doc))
+                    .then((doc) => {
+                        db.get(oldId)
+                        .then((doc2) => {
+                            doc2.country = doc.country;
+                            return db.put(doc2)
+                            .then(() => {
+                                db.get(oldId).then((doc3) => console.log(doc3));
+                            });
+                        });
+                    });
+                    
+
+                    //     //db.remove(tmpAr._id, tmpAr._rev)
+                    //     then(() => {
+                    //         db.get(oldId, {rev: oldRev, include_docs: true});
+                    //     })
+                    //     .then((doc2) => {
+                    //         console.log(doc2._id);
+                    //         console.log(doc2.country);
+                    //         db.put({
+                    //             _id: doc2._id,
+                    //             country: doc2.country
+                    //         });
+                    //         console.log(doc2);
+                    //     })
+                    //     .then(() => {
+                    //         //console.log(db.get(oldId));
+                    //     })
+
+    
+                    //   .catch(function (err) {
+                    //     console.log('ERROR');
+                    //   });
+                    // 
+
+                }
+                document.getElementById("demo").innerHTML = txt;
+            }
+
+
+            function displayConflicts(conflictingObjs) {
+                console.log(conflictingObjs[0][0].conflict.name);
+                
+                let el = helper.dom.getElement('id', 'conflicts');
+
+                helper.dom.appendInnerHTMLIO('', el);
+
+
+                
+
+
+                conflictingObjs.forEach(function(conflictingObj) {
+                    let newInput = helper.dom.createElement('input');
+                        helper.dom.setAttribute('type', 'radio', newInput);
+
+                        newInput.addEventListener('click', function() {
+                            console.log(conflictingObj[0].winner.rev);
+                            Promise.all(conflictingObj.map(function(arrayEl) {
+                                //return new Promise(function (resolve, reject) {
+                                    return db.remove(conflictingObj[0].docId, arrayEl.conflict.rev);
+                                }))
+                                .then(function() {
+                                    console.log('DONE');
+                                    helper.dom.appendInnerHTMLIO('', el);
+                                });
+                            
+                        });
+                        helper.dom.appendChildNodeIO(newInput, el);
+                        
+                        let newBold = helper.dom.createElement('b');
+                        helper.dom.appendInnerHTMLIO('Keep: ' + conflictingObjs[0][0].winner.name, newBold);
+                        helper.dom.appendChildNodeIO(newBold, el);
+
+
+
+                    conflictingObj.forEach(function(item) {
+                        let newInput = helper.dom.createElement('input');
+                        helper.dom.setAttribute('type', 'radio', newInput);
+                        
+                        newInput.addEventListener('click', function() {
+                            console.log(item.conflict.rev);
+                            Promise.all(conflictingObj.filter(function(element) {
+                                    return element.conflict.rev != item.conflict.rev;
+                                }).map(function(arrayEl) {
+                                    //return new Promise(function (resolve, reject) {
+                                        return db.remove(conflictingObj[0].docId, arrayEl.conflict.rev);
+                                    }))
+                                    .then(function() {
+                                        return db.remove(conflictingObj[0].docId, conflictingObj[0].winner.rev);
+                                    })
+                                    .then(function() {
+                                        console.log('DONE');
+                                        helper.dom.appendInnerHTMLIO('', el);
+                                    });
+                                });
+
+
+
+
+                        
+
+                        helper.dom.appendChildNodeIO(newInput, el);
+                        
+                        let newBold = helper.dom.createElement('b');
+                        helper.dom.appendInnerHTMLIO('Keep: ' + item.conflict.name, newBold);
+                        helper.dom.appendChildNodeIO(newBold, el);
+
+                    });
+                });
+
+              
+
+                
+                
+                
+            }
+            
+
+
+            function getConflictRows(docs) {
+                console.log(docs);
+                return docs['rows'].filter(function(row) {
+                    return row.doc._conflicts;
+                });
+            }
+
+
+            function getConflictingObjs(conflictRows, db) {
+                return new Promise(function (resolve, reject) {
+
+                    Promise.all(conflictRows.map(function(conflictRow) {
+                        return getRevisions(conflictRow.doc.country, conflictRow.doc.written, conflictRow.doc._rev, conflictRow.doc._conflicts, conflictRow.doc._id, db);
+                    })).then((results) => {
+                        resolve(results);
+                    });
+                });
+                
+            }
+
+
+            function getRevisions(winnerName, winnerWritten, winnerRev, conflictingRevs, docId, db) {
+                console.log(conflictingRevs);
+                return new Promise(function(resolve, reject) {
+                    Promise.all(conflictingRevs.map(function(conflictingRev) {
+                        return db.get(docId, {rev: conflictingRev}).then(function(doc) {
+                            console.log(doc);
+                            return {
+                                winner: {
+                                    name: winnerName,
+                                    written: winnerWritten,
+                                    rev: winnerRev
+                                },
+                                conflict: {
+                                    name: doc.country,
+                                    written: doc.written,
+                                    rev: doc._rev
+                                },
+                                docId: docId
+                            };
+                        });
+                    })).then((results) => resolve(results));
+                });
+                
+            }
+
+
+            function deleteRevision(rev, docId, db) {
+                db.remove(docId, rev);
+            }
+
+
+
+            //fetchAll(db).then((countries) => displayList(countries, 'countries', db));
+
+            fetchAll(db)
+            .then((countries) => displayList(countries, 'countries', db))
+            .then(() => db.sync(remoteCouch, { conflicts: true, include_docs: true}))
+            .then(function() {
+                console.log('sy');
+                fetchAll(db).then((countries) => displayList(countries, 'countries', db));
+            });
+
+
           }).on('paused', function (info) {
         //     //console.log(new Date().toISOString());
                 console.log('PAUSED');
@@ -97,24 +341,57 @@ document.addEventListener('DOMContentLoaded', function() {
         
 
         document.getElementById('add-button').addEventListener('click', function () {
-            addAndReload('countries', db);
+            postAndReload('countries', db);
         });
 
 
 
-                
-        function addAndReload(domId, db) {
-            // console.log('db in addandreload');
-            // console.log(db);
-            getValueFromField('add-name')
-            .then((value) => addRecord(value, db))
+           //DONE     
+        function postAndReload(domId, db) {
+            getValueFromField('', 'add-name')
+            .then((value) => postDoc(value, db))
+            .catch(function() {
+                console.log('error');
+            });
+        }
+
+
+//DONE
+        function postDoc(value, db) {
+            return new Promise(function(resolve, reject) {
+                let doc = {
+                    _id: new Date().toISOString(),
+                    country: value,
+                    written: new Date().toISOString()
+                    };
+                resolve(db.put(doc));   
+            });      
+        }
+        
+
+
+        
+        //Done
+        function putAndReload(docId, id, db) {
+            getValueFromField('editField-', docId)
+            .then((value) => putDoc(value, docId, db))
             // .then(() => fetchAll(db))
-            // .then((records) => displayList(records, domId, db))
+            // .then((countries) => displayList(countries, id, db))
             // .then(() => {
-            //     db.sync(remoteCouch, {conflicts: true, include_docs: true}).on('complete', function (item) {
+            //       db.sync(remoteCouch, {conflicts: true, include_docs: true})
+            //       .then(function(item) {
+            //         console.log('ITEM');
             //         console.log(item);
-            //         console.log('we are n sync');
-            //         fetchAll(db).then((records) => displayList(records, 'countries', db));
+            //       })
+            //       .then(function() {
+            //         db.allDocs({conflicts: true, include_docs: true}).then(function(doc) {
+            //             console.log('HERE!!');
+            //             console.log(doc);
+            //             return conflictSolver(doc)
+            //             .then((conflictObj) => chooseWinner(conflictObj))
+            //             .then(() => fetchAll(db))
+            //             .then((countries) => displayList(countries, 'countries', db));
+            //         });
             //       });
             // })
             .catch(function() {
@@ -122,21 +399,93 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }
 
-        function addRecord(value, db) {
+        //DONE
+        function putDoc(newValue, docId, db) {
+            return getDoc(docId, db)
+                .then((doc) => editDoc(doc, newValue, db))
+                .catch((err) => console.log(err));  
+        }
+
+        //DONE
+        function getDoc(docId, db) {
+            return db.get(docId, {
+                conflicts: true,
+                include_docs: true
+            });      
+        }
+
+        function fetchAll(db) {
+            return db.allDocs({
+                include_docs: true,
+                conflicts: true
+            });  
+      }
+
+        //DONE
+        function editDoc(doc, newValue, db) {
             return new Promise(function(resolve, reject) {
-                let doc = {
-                    _id: new Date().toISOString(),
-                    written: new Date().toISOString(),
-                    country: value
-                    };
+                doc.country = newValue;
+                doc.written = new Date().toISOString();
                 resolve(db.put(doc));   
             });      
         }
-        
-        
-        function getValueFromField(domId) {
+
+        function deleteDoc(docId, db) {
+            return getDoc(docId, db)
+                .then((doc) => removeDoc(doc, db));    
+        }
+
+
+        //DONE
+        function removeDoc(doc, db) {
             return new Promise(function(resolve, reject) {
-                var el = document.getElementById(domId);
+                doc._deleted = true;
+                doc.written = new Date().toISOString();
+                resolve(db.put(doc));  
+            });      
+        }
+
+
+        //DONE
+        function deleteAndReload(docId, id, db) {
+            deleteDoc(docId, db)
+
+        //     .then((result) => {
+        //         console.log('RESULT');
+        //         console.log(result);
+        //         fetchAll(db)
+        //         .then((countries) => displayList(countries, id, db))
+        //         .then(() => db.sync(remoteCouch, {conflicts: true, include_docs: true}))
+        //         .then(function(item) {
+        //           console.log('ITEM');
+        //           console.log(item);
+        //         })
+        //         .then(function() {
+        //           db.get(itemId, {rev: result.rev, conflicts: true}).then(function(doc) {
+        //               console.log('HERE!!');
+        //               console.log(doc);
+        //               return conflictSolver(doc)
+        //               .then((conflictObj) => chooseWinner(conflictObj))
+        //               .then(() => fetchAll(db))
+        //               .then((countries) => displayList(countries, 'countries', db));
+        //           });
+        //         });
+        //   });
+
+            .catch(function() {
+                console.log('error');
+            });
+        }
+
+
+
+        
+
+        
+        //DONE
+        function getValueFromField(domIdPrefix, domIdSuffix) {
+            return new Promise(function(resolve, reject) {
+                var el = document.getElementById(domIdPrefix + domIdSuffix);
                 var value = el.value;
                 if (value) {
                     el.value = '';
@@ -149,41 +498,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
 
 
-
-        function fetchAll(db) {
-            //var el = document.getElementById(id);
-              return db.allDocs({
-                  include_docs: true,
-                  attachments: true
-              });  
-        }
-        
-        
-        function editAndReload(itemId, id, db) {
-            editOne(itemId)
-            .then((country) => {
-                return editRecord(country, itemId, db);
-            })
-            .then(() => fetchAll(db))
-            .then((countries) => displayList(countries, id, db))
-            .then(() => {
-                  db.sync(remoteCouch, {conflicts: true, include_docs: true})
-                  .then(function(item) {
-                    console.log('ITEM');
-                    console.log(item);
-                  })
-                  .then(function() {
-                    db.allDocs({conflicts: true, include_docs: true}).then(function(doc) {
-                        console.log('HERE!!');
-                        console.log(doc);
-                        return conflictSolver(doc)
-                        .then((conflictObj) => chooseWinner(conflictObj))
-                        .then(() => fetchAll(db))
-                        .then((countries) => displayList(countries, 'countries', db));
-                    });
-                  });
-            });
-        }
 
 
 
@@ -406,68 +720,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 
 
-        function editOne(itemId) {
-            console.log('ID', itemId);
-            return new Promise(function(resolve, reject) {
-                var el = document.getElementById('editField-' + itemId);
-                var country = el.value;
-                if (country) {
-                    el.value = '';
-                    resolve(country);
-                }
-            })
-        }
-        
-        function editRecord(item, itemId, db) {
-            return db.get(itemId, {conflicts: true}).then(function(doc) {
-                //console.log(doc);
-                doc.country = item;
-                doc.written = new Date().toISOString();
-                return db.put(doc);
-            }).catch(function(err) {
-                console.log(err);
-            });  
-        }
-        
-        function deleteAndReload(itemId, id, db) {
-            deleteOne(itemId, db)
 
-            .then((result) => {
-                console.log('RESULT');
-                console.log(result);
-                fetchAll(db)
-                .then((countries) => displayList(countries, id, db))
-                .then(() => db.sync(remoteCouch, {conflicts: true, include_docs: true}))
-                .then(function(item) {
-                  console.log('ITEM');
-                  console.log(item);
-                })
-                .then(function() {
-                  db.get(itemId, {rev: result.rev, conflicts: true}).then(function(doc) {
-                      console.log('HERE!!');
-                      console.log(doc);
-                      return conflictSolver(doc)
-                      .then((conflictObj) => chooseWinner(conflictObj))
-                      .then(() => fetchAll(db))
-                      .then((countries) => displayList(countries, 'countries', db));
-                  });
-                });
-          });
-        }
-
-
-
-        
-
-        
-        function deleteOne(item, db) {
-            return db.get(item).then(function (doc) {
-                doc._deleted = true;
-                doc.written = new Date().toISOString();
-                return db.put(doc);
-                });
-            
-        }
         
         
 
@@ -499,7 +752,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     editButton.addEventListener('click', function () {
                         //console.log('db in event listener');
                         //console.log(db);
-                        editAndReload(editField.getAttribute('id').slice(10), 'countries', db);
+                        putAndReload(editField.getAttribute('id').slice(10), 'countries', db);
                     });
                 
                 
