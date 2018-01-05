@@ -319,32 +319,51 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (docs.rows.length > 0) {
 
                     docs.rows.forEach((row) => {
-                        let data = '';
-            
-                        data += '<td>' + row.doc.country + '</td>';
-                        data += '<td><input type="text" id="' + "editField-" + row.doc._id + '"><button id="' + "editButton-" + row.doc._id + '">Edit</button></td>';
-                        data += '<td><input type="text" id="' + "deleteField-" + row.doc._id + '"><button id="' + "deleteButton-" + row.doc._id + '">Delete</button></td>';
-                    
+
+                        let tdEl;
+                        let trEl;
+                        let inputEl;
+                        let buttonEl;
+
+                        trEl = helper.dom.createElement('tr');
+
+                        tdEl = helper.dom.createElement('td');
+                        helper.dom.appendInnerHTMLIO(row.doc.country, tdEl);
+                        helper.dom.appendChildNodeIO(tdEl, trEl);
                         
-                        let tblrow = helper.dom.createElement('tr');
-                        helper.dom.appendInnerHTMLIO(data, tblrow);
-            
-                        let editField = tblrow.children[1].children[0];
-                        let editButton = tblrow.children[1].children[1];
-                    
-                        editButton.addEventListener('click', function () {
-                            putAndReload(editField.getAttribute('id').slice(10), 'countries', db);
+                        tdEl = helper.dom.createElement('td');
+                        inputEl = helper.dom.createElement('input');
+                        buttonEl = helper.dom.createElement('button');
+                        helper.dom.setAttribute('id', 'editField-' + row.doc._id, inputEl);
+                        helper.dom.setAttribute('type', 'text', inputEl);
+                        helper.dom.setAttribute('id', 'editButton-' + row.doc._id, buttonEl);
+                        helper.dom.appendInnerHTMLIO('Edit', buttonEl);
+
+                        buttonEl.addEventListener('click', function () {
+                            putAndReload(inputEl.getAttribute('id').slice(10), 'countries', db);
                         });
-                    
-                    
-                        let deleteField = tblrow.children[2].children[0];
-                        let deleteButton = tblrow.children[2].children[1];
-                    
-                        deleteButton.addEventListener('click', function () {
-                            deleteAndReload(deleteField.getAttribute('id').slice(12), 'countries', db);
+
+                        helper.dom.appendChildNodeIO(inputEl, tdEl);
+                        helper.dom.appendChildNodeIO(buttonEl, tdEl);
+                        helper.dom.appendChildNodeIO(tdEl, trEl);
+
+                        tdEl = helper.dom.createElement('td');
+                        inputEl = helper.dom.createElement('input');
+                        buttonEl = helper.dom.createElement('button');
+                        helper.dom.setAttribute('id', 'deleteField-' + row.doc._id, inputEl);
+                        helper.dom.setAttribute('type', 'text', inputEl);
+                        helper.dom.setAttribute('id', 'deleteButton-' + row.doc._id, buttonEl);
+                        helper.dom.appendInnerHTMLIO('Delete', buttonEl);
+
+                        buttonEl.addEventListener('click', function () {
+                            putAndReload(inputEl.getAttribute('id').slice(12), 'countries', db);
                         });
-                    
-                        el.appendChild(tblrow);
+
+                        helper.dom.appendChildNodeIO(inputEl, tdEl);
+                        helper.dom.appendChildNodeIO(buttonEl, tdEl);
+                        helper.dom.appendChildNodeIO(tdEl, trEl);
+
+                        helper.dom.appendChildNodeIO(trEl, el);
                     });
                     
 
@@ -362,11 +381,11 @@ document.addEventListener('DOMContentLoaded', function() {
                     //     let editField = tblrow.children[1].children[0];
                     //     let editButton = tblrow.children[1].children[1];
                     
-                    //     editButton.addEventListener('click', function () {
-                    //         //console.log('db in event listener');
-                    //         //console.log(db);
-                    //         putAndReload(editField.getAttribute('id').slice(10), 'countries', db);
-                    //     });
+                    // editButton.addEventListener('click', function () {
+                    //     //console.log('db in event listener');
+                    //     //console.log(db);
+                    //     putAndReload(editField.getAttribute('id').slice(10), 'countries', db);
+                    // });
                     
                     
                     //     let deleteField = tblrow.children[2].children[0];
