@@ -7,6 +7,10 @@
 
 document.addEventListener('DOMContentLoaded', function() {
 
+
+    var manualUpdateOnNormalPull = true;
+    var manualUpdateOnBulkPull = true;
+
     var log = [];
     var remoteCouch = 'http://127.0.0.1:5984/kittens';
 
@@ -26,19 +30,23 @@ document.addEventListener('DOMContentLoaded', function() {
 
             if ((info.direction == "pull") && (info.change.docs.length < 2)) {
                 console.log("Normal pull");
-                // console.log(info);
-                // console.log(info.change.docs[0]);
-                info.change.docs.forEach((doc) => ChoosePulledOrExistingRev(doc));
-                
+                console.log(info);
+                if (manualUpdateOnNormalPull) {
+                    ChoosePulledOrExistingRev(info.change.docs[0])
+                    .then(() => fetchAllAndUpdate()); 
+                } else {
+
+                }      
             }
 
              else if ((info.direction == "pull") && (info.change.docs.length > 1)) {
                 console.log("Bulk pull");
-                //console.log(info);
-                // console.log(info.change.docs);
-                // myFunction(info.change.docs);
-                info.change.docs.forEach((doc) => ChoosePulledOrExistingRev(doc));
+                if (manualUpdateOnBulkPull) {
+                    Promise.all(info.change.docs.map((doc) => ChoosePulledOrExistingRev(doc)))
+                    .then(() => fetchAllAndUpdate()); 
+                } else {
 
+                }
             }
 
             else if ((info.direction == "push") && (info.change.docs.length < 2)) {
@@ -53,18 +61,49 @@ document.addEventListener('DOMContentLoaded', function() {
             }   
             else {
                 console.log('NOT ANY OF THE PUSH AND PULLS');
-            console.log(log);
+            }
+
+
+            function ChoosePulledOrExistingRev(latestDocRev) {
+                return new Promise(function(resolve, reject) {
+                    if (confirm("Do you want these? " + latestDocRev.country) == true) {
+                        resolve(); 
+                    } else {
+                        useExistingRev(latestDocRev)
+                        .then(() => {
+                            resolve();
+                        });
+                    }
+                });
+                
+            }
+
+
+            //Done
+            function useExistingRev(latestDocRev) {
+                return getPreviousRev(latestDocRev)
+                .then((previousDocRev) => {
+                    if (typeof latestDocRev._revisions === 'undefined') {
+                        latestDocRev._deleted = true;
+                    } else {
+                        latestDocRev._deleted = previousDocRev._deleted;
+                        latestDocRev.country = previousDocRev.country;
+                    }
+                    return db.put(latestDocRev);
+                });
             }
 
 
             //Done
             function getPreviousRev(latestDocRev) {
-                console.log(latestDocRev);
-                
-                let previousRev = (latestDocRev._revisions.ids.length - 1) + '-' + latestDocRev._revisions.ids[1];
+                let previousRev;
                 let id = latestDocRev._id;
-                // console.log(oldRev);
-                // console.log(oldId);
+
+                if (typeof latestDocRev._revisions === 'undefined') {
+                    previousRev = latestDocRev._rev;
+                } else {
+                    previousRev = (latestDocRev._revisions.ids.length - 1) + '-' + latestDocRev._revisions.ids[1];   
+                }
                 return db.get(id, {rev: previousRev, include_docs: true});
             }
 
@@ -76,31 +115,16 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
 
-            //Done
-            function useExistingRev(latestDocRev) {
-                getPreviousRev(latestDocRev)
-                .then((previousDocRev) => {
-                    console.log(previousDocRev);
-                    latestDocRev.country = previousDocRev.country;
-                    return db.put(latestDocRev);
-                })
-                .then(() => {
-                    db.get(latestDocRev._id).then((latestDocRev) => console.log(latestDocRev));
-                })
-                .then(() => {
-                    fetchAllAndUpdate();
-                });
-            }
 
 
 
-            function ChoosePulledOrExistingRev(latestDocRev) {
-                if (confirm("Do you want these? " + latestDocRev.country) == true) {
-                    fetchAllAndUpdate(); 
-                } else {
-                    useExistingRev(latestDocRev);
-                }
-            }
+
+
+
+
+
+
+
 
 
             function displayConflicts(conflictingObjs) {
@@ -281,6 +305,90 @@ document.addEventListener('DOMContentLoaded', function() {
                 
         //     });
         // });
+
+
+
+            /// SKA BARA GÖRA EN RAD I TAGET - ÄDRA ÄVEN FRÅN TABLE TILL DIV
+            function displayList(docs, id, db) {
+
+                let data = '';
+                let el = helper.dom.getElement('id', id);
+
+                helper.dom.appendInnerHTMLIO(data, el);
+
+                if (docs.rows.length > 0) {
+
+                    docs.rows.forEach((row) => {
+                        let data = '';
+            
+                        data += '<td>' + row.doc.country + '</td>';
+                        data += '<td><input type="text" id="' + "editField-" + row.doc._id + '"><button id="' + "editButton-" + row.doc._id + '">Edit</button></td>';
+                        data += '<td><input type="text" id="' + "deleteField-" + row.doc._id + '"><button id="' + "deleteButton-" + row.doc._id + '">Delete</button></td>';
+                    
+                        
+                        let tblrow = helper.dom.createElement('tr');
+                        helper.dom.appendInnerHTMLIO(data, tblrow);
+            
+                        let editField = tblrow.children[1].children[0];
+                        let editButton = tblrow.children[1].children[1];
+                    
+                        editButton.addEventListener('click', function () {
+                            putAndReload(editField.getAttribute('id').slice(10), 'countries', db);
+                        });
+                    
+                    
+                        let deleteField = tblrow.children[2].children[0];
+                        let deleteButton = tblrow.children[2].children[1];
+                    
+                        deleteButton.addEventListener('click', function () {
+                            deleteAndReload(deleteField.getAttribute('id').slice(12), 'countries', db);
+                        });
+                    
+                        el.appendChild(tblrow);
+                    });
+                    
+
+                    // for (var i = 0; i < docs.rows.length; i++) {
+                    //     let data = '';
+            
+                    //     data += '<td>' + docs.rows[i].doc.country + '</td>';
+                    //     data += '<td><input type="text" id="' + "editField-" + docs.rows[i].doc._id + '"><button id="' + "editButton-" + docs.rows[i].doc._id + '">Edit</button></td>';
+                    //     data += '<td><input type="text" id="' + "deleteField-" + docs.rows[i].doc._id + '"><button id="' + "deleteButton-" + docs.rows[i].doc._id + '">Delete</button></td>';
+                    
+                    //     let tblrow = helper.dom.createElement('tr');
+                    //     tblrow.innerHTML = data;
+                    //     //el.innerHTML += data;
+            
+                    //     let editField = tblrow.children[1].children[0];
+                    //     let editButton = tblrow.children[1].children[1];
+                    
+                    //     editButton.addEventListener('click', function () {
+                    //         //console.log('db in event listener');
+                    //         //console.log(db);
+                    //         putAndReload(editField.getAttribute('id').slice(10), 'countries', db);
+                    //     });
+                    
+                    
+                    //     let deleteField = tblrow.children[2].children[0];
+                    //     let deleteButton = tblrow.children[2].children[1];
+                    
+                    //     deleteButton.addEventListener('click', function () {
+                    //         deleteAndReload(deleteField.getAttribute('id').slice(12), 'countries', db);
+                    //     });
+                    
+                    //     //console.log(tblrow.children[0].children[1].children[0].getAttribute('id'));
+                    
+                    //     el.appendChild(tblrow);
+                    // }
+                }
+            
+                
+                return el;
+            }
+
+
+
+
         
         
 
@@ -647,53 +755,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
 
         
-        /// SKA BARA GÖRA EN RAD I TAGET - ÄDRA ÄVEN FRÅN TABLE TILL DIV
-        function displayList(countries, id, db) {
-            // console.log('db');
-            // console.log(db);
-            //var el = document.getElementById(id);
-            var el = helper.dom.getElement('id', id);
-        
-            let data = '';
-            el.innerHTML = data;
-            if (countries.rows.length > 0) {
-                for (var i = 0; i < countries.rows.length; i++) {
-                    let data = '';
-        
-                    data += '<td>' + countries.rows[i].doc.country + '</td>';
-                    data += '<td><input type="text" id="' + "editField-" + countries.rows[i].doc._id + '"><button id="' + "editButton-" + countries.rows[i].doc._id + '">Edit</button></td>';
-                    data += '<td><input type="text" id="' + "deleteField-" + countries.rows[i].doc._id + '"><button id="' + "deleteButton-" + countries.rows[i].doc._id + '">Delete</button></td>';
-                
-                    let tblrow = helper.dom.createElement('tr');
-                    tblrow.innerHTML = data;
-                    //el.innerHTML += data;
-        
-                    let editField = tblrow.children[1].children[0];
-                    let editButton = tblrow.children[1].children[1];
-                
-                    editButton.addEventListener('click', function () {
-                        //console.log('db in event listener');
-                        //console.log(db);
-                        putAndReload(editField.getAttribute('id').slice(10), 'countries', db);
-                    });
-                
-                
-                    let deleteField = tblrow.children[2].children[0];
-                    let deleteButton = tblrow.children[2].children[1];
-                
-                    deleteButton.addEventListener('click', function () {
-                        deleteAndReload(deleteField.getAttribute('id').slice(12), 'countries', db);
-                    });
-                
-                    //console.log(tblrow.children[0].children[1].children[0].getAttribute('id'));
-                
-                    el.appendChild(tblrow);
-                }
-            }
-        
-            
-            return el;
-        }
+
 
 
 
